@@ -1,11 +1,11 @@
-# @lexxy/math
+# lexxy-math
 
 KaTeX-based math rendering extension for [Lexxy](https://github.com/basecamp/lexxy). Adds inline (`$...$`) and block (`$$...$$`) math support with live preview editing.
 
 ## Installation
 
 ```bash
-npm install @lexxy/math
+npm install lexxy-math
 ```
 
 **Peer dependencies:** `@37signals/lexxy`, `lexical`, `@lexical/utils`
@@ -14,7 +14,7 @@ npm install @lexxy/math
 
 ```js
 import { configure } from "@37signals/lexxy"
-import { MathExtension } from "@lexxy/math"
+import { MathExtension } from "lexxy-math"
 
 configure({
   global: { extensions: [MathExtension] },
@@ -28,10 +28,10 @@ Add the editor and content styles to your application:
 
 ```css
 /* In your editor stylesheet */
-@import "@lexxy/math/styles/math-editor.css";
+@import "lexxy-math/styles/math-editor.css";
 
 /* In your content stylesheet */
-@import "@lexxy/math/styles/math-content.css";
+@import "lexxy-math/styles/math-content.css";
 ```
 
 You also need KaTeX's CSS for rendering. Either import it from the `katex` package or load it from a CDN:
@@ -45,7 +45,7 @@ You also need KaTeX's CSS for rendering. Either import it from the `katex` packa
 To render math in non-editor content (e.g., displaying saved posts), use `renderContentMath`:
 
 ```js
-import { renderContentMath } from "@lexxy/math"
+import { renderContentMath } from "lexxy-math"
 
 // Render all math elements in the document
 renderContentMath()
