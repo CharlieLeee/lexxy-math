@@ -1,0 +1,115 @@
+let injected = false
+
+const KATEX_CSS_URL = "https://cdn.jsdelivr.net/npm/katex@0.16.35/dist/katex.min.css"
+
+const MATH_CSS = `
+/* Inline math */
+.lexxy-math-inline {
+  cursor: pointer;
+  border-radius: var(--lexxy-radius);
+  padding: 0 0.25ch;
+}
+
+.lexxy-math-inline:hover {
+  background: var(--lexxy-color-ink-lightest);
+}
+
+/* Block math */
+.lexxy-math-block {
+  cursor: pointer;
+  margin: 0;
+  padding: 1em;
+  position: relative;
+  text-align: center;
+}
+
+.lexxy-math-block:hover {
+  background: var(--lexxy-color-ink-lightest);
+  border-radius: var(--lexxy-radius);
+}
+
+/* KaTeX style inheritance */
+.lexxy-math-inline .katex,
+.lexxy-math-inline .katex-html,
+.lexxy-math-inline .katex .base,
+.lexxy-math-block__preview .katex,
+.lexxy-math-block__preview .katex-html,
+.lexxy-math-block__preview .katex .base {
+  font-weight: inherit;
+  font-style: inherit;
+  text-decoration: inherit;
+}
+
+.lexxy-math-block__preview--empty {
+  color: var(--lexxy-color-ink-medium);
+  font-style: italic;
+}
+
+/* Math error */
+.lexxy-math-error {
+  color: var(--lexxy-color-red);
+  font-family: var(--lexxy-font-mono);
+  font-size: 0.9em;
+}
+
+/* Math editor panel */
+:where(lexxy-math-editor) {
+  background-color: var(--lexxy-color-canvas);
+  border: 2px solid var(--lexxy-color-selected-hover);
+  border-radius: calc(var(--lexxy-radius) + 2px);
+  box-shadow: var(--lexxy-shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5ch;
+  padding: 1ch;
+  position: absolute;
+  z-index: 3;
+  min-inline-size: 20ch;
+  max-inline-size: calc(100% - 2ch);
+}
+
+:where(lexxy-math-editor)[hidden] {
+  display: none;
+}
+
+.lexxy-math-editor__input {
+  background-color: var(--lexxy-color-ink-lightest);
+  border: 1px solid var(--lexxy-color-ink-lighter);
+  border-radius: var(--lexxy-radius);
+  color: var(--lexxy-color-ink);
+  font-family: var(--lexxy-font-mono);
+  font-size: 0.9em;
+  padding: 1ch;
+  resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.lexxy-math-editor__input:focus {
+  outline: var(--lexxy-focus-ring-size) solid var(--lexxy-focus-ring-color);
+  outline-offset: var(--lexxy-focus-ring-offset);
+}
+
+.lexxy-math-editor__preview {
+  min-block-size: 2em;
+  overflow-x: auto;
+  padding: 0.5ch;
+  text-align: center;
+}
+`
+
+export function injectStyles() {
+  if (injected || typeof document === "undefined") return
+  injected = true
+
+  // KaTeX CSS from CDN
+  const link = document.createElement("link")
+  link.rel = "stylesheet"
+  link.href = KATEX_CSS_URL
+  document.head.appendChild(link)
+
+  // Math editor CSS
+  const style = document.createElement("style")
+  style.textContent = MATH_CSS
+  document.head.appendChild(style)
+}

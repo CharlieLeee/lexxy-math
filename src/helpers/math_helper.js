@@ -1,6 +1,9 @@
 import katex from "katex"
+import { injectStyles } from "./styles"
 
 export function renderMath(latex, { displayMode = false } = {}) {
+  injectStyles()
+
   try {
     return katex.renderToString(latex, { displayMode, throwOnError: false })
   } catch {
