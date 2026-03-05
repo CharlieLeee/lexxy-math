@@ -1,6 +1,6 @@
 {
   "name": "lexxy-math",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "KaTeX-based math rendering extension for Lexxy",
   "type": "module",
   "module": "dist/lexxy-math.esm.js",
@@ -18,9 +18,7 @@
     "katex": "^0.16.33"
   },
   "peerDependencies": {
-    "@37signals/lexxy": "^0.8.0",
-    "@lexical/utils": "^0.38.2",
-    "lexical": "^0.38.2"
+    "@37signals/lexxy": "^0.8.0"
   },
   "devDependencies": {
     "@rollup/plugin-node-resolve": "^16.0.1",

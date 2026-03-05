@@ -8,7 +8,7 @@ KaTeX-based math rendering extension for [Lexxy](https://github.com/basecamp/lex
 npm install lexxy-math
 ```
 
-**Peer dependencies:** `@37signals/lexxy` (>= 0.8.0), `lexical`, `@lexical/utils`
+**Peer dependency:** `@37signals/lexxy` (>= 0.8.0)
 
 ## Usage
 
@@ -22,7 +22,7 @@ configure({
 })
 ```
 
-That's it. All styles (KaTeX CSS + editor CSS) are auto-injected on first use — no manual CSS imports needed.
+All styles (KaTeX CSS + editor CSS) are auto-injected on first use — no manual CSS imports needed.
 
 ### Highlight & color support
 
@@ -30,6 +30,8 @@ To support highlight and font color on math nodes, Lexxy must export its highlig
 
 ```js
 export { TOGGLE_HIGHLIGHT_COMMAND, REMOVE_HIGHLIGHT_COMMAND } from "./extensions/highlight_extension"
+export * from "lexical"
+export { mergeRegister } from "@lexical/utils"
 ```
 
 Once exported, `lexxy-math` will automatically intercept these commands and apply styles to selected math nodes.
@@ -48,23 +50,27 @@ renderContentMath()
 renderContentMath(document.querySelector(".post-body"))
 ```
 
-This finds all elements with `data-math` attributes and renders them with KaTeX.
-
 ### Rollup configuration
 
-Since `lexxy-math` imports from `@37signals/lexxy`, you need to alias it to your local Lexxy source in your Rollup config:
+Since `lexxy-math` imports everything from `@37signals/lexxy`, you need to alias it to your local Lexxy source. You also need to alias `lexxy-math` to its source to avoid duplicate `lexical` bundles:
 
 ```js
 import alias from "@rollup/plugin-alias"
+import { nodeResolve } from "@rollup/plugin-node-resolve"
 import path from "path"
+import { fileURLToPath } from "url"
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 export default {
   plugins: [
     alias({
       entries: [
-        { find: "@37signals/lexxy", replacement: path.resolve("src/index.js") }
+        { find: "@37signals/lexxy", replacement: path.resolve(__dirname, "src/index.js") },
+        { find: "lexxy-math", replacement: path.resolve(__dirname, "../lexxy-math/src/index.js") }
       ]
     }),
+    nodeResolve(),
     // ... other plugins
   ]
 }

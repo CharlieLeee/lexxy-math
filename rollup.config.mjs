@@ -8,8 +8,6 @@ export default {
     format: "esm"
   },
   external: [
-    /^@lexical\//,
-    "lexical",
     "@37signals/lexxy",
     "katex"
   ],

@@ -1,6 +1,10 @@
-import { $createParagraphNode, $getNodeByKey, $getSelection, $getNearestNodeFromDOMNode, $isRangeSelection, $isParagraphNode, CLICK_COMMAND, COMMAND_PRIORITY_HIGH, COMMAND_PRIORITY_NORMAL, FORMAT_TEXT_COMMAND, TextNode, createCommand, defineExtension, isDOMNode, KEY_ENTER_COMMAND } from "lexical"
-import { mergeRegister } from "@lexical/utils"
-import { Extension, TOGGLE_HIGHLIGHT_COMMAND, REMOVE_HIGHLIGHT_COMMAND } from "@37signals/lexxy"
+import {
+  $createParagraphNode, $getNodeByKey, $getSelection, $getNearestNodeFromDOMNode,
+  $isRangeSelection, $isParagraphNode, CLICK_COMMAND, COMMAND_PRIORITY_HIGH,
+  COMMAND_PRIORITY_NORMAL, FORMAT_TEXT_COMMAND, TextNode, createCommand,
+  defineExtension, isDOMNode, KEY_ENTER_COMMAND, mergeRegister,
+  Extension, TOGGLE_HIGHLIGHT_COMMAND, REMOVE_HIGHLIGHT_COMMAND
+} from "@37signals/lexxy"
 import { InlineMathNode, $isInlineMathNode } from "../nodes/inline_math_node"
 import { BlockMathNode, $isBlockMathNode } from "../nodes/block_math_node"
 
