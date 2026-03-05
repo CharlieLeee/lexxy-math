@@ -5,13 +5,21 @@ import { renderMath } from "../helpers/math_helper"
 export class BlockMathNode extends DecoratorNode {
   $config() {
     return this.config("block_math", {
-      $importJSON: (serialized) => new BlockMathNode({ latex: serialized.latex }),
+      $importJSON: (serialized) => new BlockMathNode({
+        latex: serialized.latex,
+        style: serialized.style
+      }),
       importDOM: {
         div: (element) => {
           if (!element.classList.contains("math-block") || !element.hasAttribute("data-math")) return null
 
           return {
-            conversion: (div) => ({ node: new BlockMathNode({ latex: div.getAttribute("data-math") }) }),
+            conversion: (div) => ({
+              node: new BlockMathNode({
+                latex: div.getAttribute("data-math"),
+                style: div.getAttribute("style") || ""
+              })
+            }),
             priority: 2
           }
         }
@@ -19,18 +27,23 @@ export class BlockMathNode extends DecoratorNode {
     })
   }
 
-  constructor({ latex = "" } = {}, key) {
+  constructor({ latex = "", style = "" } = {}, key) {
     super(key)
     this.__latex = latex
+    this.__style = style
   }
 
   afterCloneFrom(prevNode) {
     super.afterCloneFrom(prevNode)
     this.__latex = prevNode.__latex
+    this.__style = prevNode.__style
   }
 
   createDOM() {
     const figure = createElement("figure", { className: "lexxy-math-block" })
+    if (this.__style) {
+      figure.style.cssText = this.__style
+    }
 
     const preview = createElement("div", { className: "lexxy-math-block__preview" })
     if (this.__latex) {
@@ -48,7 +61,19 @@ export class BlockMathNode extends DecoratorNode {
   }
 
   updateDOM(prevNode, dom) {
-    if (this.__latex === prevNode.__latex) return false
+    const styleChanged = this.__style !== prevNode.__style
+    const latexChanged = this.__latex !== prevNode.__latex
+    if (!styleChanged && !latexChanged) return false
+
+    if (styleChanged) {
+      if (this.__style) {
+        dom.style.cssText = this.__style
+      } else {
+        dom.removeAttribute("style")
+      }
+    }
+
+    if (!latexChanged) return false
 
     const preview = dom.querySelector(".lexxy-math-block__preview")
     if (!preview) return true
@@ -77,6 +102,9 @@ export class BlockMathNode extends DecoratorNode {
       className: "math-block",
       "data-math": this.__latex
     })
+    if (this.__style) {
+      div.setAttribute("style", this.__style)
+    }
     div.textContent = `$$${this.__latex}$$`
     return { element: div }
   }
@@ -85,7 +113,8 @@ export class BlockMathNode extends DecoratorNode {
     return {
       type: "block_math",
       version: 1,
-      latex: this.__latex
+      latex: this.__latex,
+      style: this.__style
     }
   }
 
@@ -96,6 +125,15 @@ export class BlockMathNode extends DecoratorNode {
   setLatex(latex) {
     const writable = this.getWritable()
     writable.__latex = latex
+  }
+
+  getStyle() {
+    return this.__style
+  }
+
+  setStyle(style = "") {
+    const writable = this.getWritable()
+    writable.__style = style
   }
 
   decorate() {

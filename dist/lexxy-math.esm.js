@@ -1,4 +1,4 @@
-import { DecoratorNode, createCommand, defineExtension, TextNode, KEY_ENTER_COMMAND, COMMAND_PRIORITY_HIGH, COMMAND_PRIORITY_NORMAL, CLICK_COMMAND, $getSelection, $isRangeSelection, $isParagraphNode, $createParagraphNode, isDOMNode, $getNearestNodeFromDOMNode, $getNodeByKey } from 'lexical';
+import { DecoratorNode, createCommand, defineExtension, TextNode, KEY_ENTER_COMMAND, COMMAND_PRIORITY_HIGH, COMMAND_PRIORITY_NORMAL, FORMAT_TEXT_COMMAND, CLICK_COMMAND, $getSelection, $isRangeSelection, $isParagraphNode, $createParagraphNode, isDOMNode, $getNearestNodeFromDOMNode, $getNodeByKey } from 'lexical';
 import { mergeRegister } from '@lexical/utils';
 import { Extension } from '@37signals/lexxy';
 import katex from 'katex';
@@ -34,13 +34,21 @@ function escapeHtml(text) {
 class InlineMathNode extends DecoratorNode {
   $config() {
     return this.config("inline_math", {
-      $importJSON: (serialized) => new InlineMathNode({ latex: serialized.latex }),
+      $importJSON: (serialized) => new InlineMathNode({
+        latex: serialized.latex,
+        style: serialized.style
+      }),
       importDOM: {
         span: (element) => {
           if (!element.classList.contains("math-inline") || !element.hasAttribute("data-math")) return null
 
           return {
-            conversion: (span) => ({ node: new InlineMathNode({ latex: span.getAttribute("data-math") }) }),
+            conversion: (span) => ({
+              node: new InlineMathNode({
+                latex: span.getAttribute("data-math"),
+                style: span.getAttribute("style") || ""
+              })
+            }),
             priority: 2
           }
         }
@@ -48,14 +56,16 @@ class InlineMathNode extends DecoratorNode {
     })
   }
 
-  constructor({ latex = "" } = {}, key) {
+  constructor({ latex = "", style = "" } = {}, key) {
     super(key);
     this.__latex = latex;
+    this.__style = style;
   }
 
   afterCloneFrom(prevNode) {
     super.afterCloneFrom(prevNode);
     this.__latex = prevNode.__latex;
+    this.__style = prevNode.__style;
   }
 
   createDOM() {
@@ -63,6 +73,10 @@ class InlineMathNode extends DecoratorNode {
       className: "lexxy-math-inline",
       "data-lexxy-decorator": true
     });
+
+    if (this.__style) {
+      span.style.cssText = this.__style;
+    }
 
     if (this.__latex) {
       span.innerHTML = renderMath(this.__latex);
@@ -74,12 +88,24 @@ class InlineMathNode extends DecoratorNode {
   }
 
   updateDOM(prevNode, dom) {
-    if (this.__latex === prevNode.__latex) return false
+    const styleChanged = this.__style !== prevNode.__style;
+    const latexChanged = this.__latex !== prevNode.__latex;
+    if (!styleChanged && !latexChanged) return false
 
-    if (this.__latex) {
-      dom.innerHTML = renderMath(this.__latex);
-    } else {
-      dom.textContent = "$\\ldots$";
+    if (styleChanged) {
+      if (this.__style) {
+        dom.style.cssText = this.__style;
+      } else {
+        dom.removeAttribute("style");
+      }
+    }
+
+    if (latexChanged) {
+      if (this.__latex) {
+        dom.innerHTML = renderMath(this.__latex);
+      } else {
+        dom.textContent = "$\\ldots$";
+      }
     }
 
     return false
@@ -98,6 +124,9 @@ class InlineMathNode extends DecoratorNode {
       className: "math-inline",
       "data-math": this.__latex
     });
+    if (this.__style) {
+      span.setAttribute("style", this.__style);
+    }
     span.textContent = `$${this.__latex}$`;
     return { element: span }
   }
@@ -106,7 +135,8 @@ class InlineMathNode extends DecoratorNode {
     return {
       type: "inline_math",
       version: 1,
-      latex: this.__latex
+      latex: this.__latex,
+      style: this.__style
     }
   }
 
@@ -117,6 +147,15 @@ class InlineMathNode extends DecoratorNode {
   setLatex(latex) {
     const writable = this.getWritable();
     writable.__latex = latex;
+  }
+
+  getStyle() {
+    return this.__style
+  }
+
+  setStyle(style = "") {
+    const writable = this.getWritable();
+    writable.__style = style;
   }
 
   decorate() {
@@ -131,13 +170,21 @@ function $isInlineMathNode(node) {
 class BlockMathNode extends DecoratorNode {
   $config() {
     return this.config("block_math", {
-      $importJSON: (serialized) => new BlockMathNode({ latex: serialized.latex }),
+      $importJSON: (serialized) => new BlockMathNode({
+        latex: serialized.latex,
+        style: serialized.style
+      }),
       importDOM: {
         div: (element) => {
           if (!element.classList.contains("math-block") || !element.hasAttribute("data-math")) return null
 
           return {
-            conversion: (div) => ({ node: new BlockMathNode({ latex: div.getAttribute("data-math") }) }),
+            conversion: (div) => ({
+              node: new BlockMathNode({
+                latex: div.getAttribute("data-math"),
+                style: div.getAttribute("style") || ""
+              })
+            }),
             priority: 2
           }
         }
@@ -145,18 +192,23 @@ class BlockMathNode extends DecoratorNode {
     })
   }
 
-  constructor({ latex = "" } = {}, key) {
+  constructor({ latex = "", style = "" } = {}, key) {
     super(key);
     this.__latex = latex;
+    this.__style = style;
   }
 
   afterCloneFrom(prevNode) {
     super.afterCloneFrom(prevNode);
     this.__latex = prevNode.__latex;
+    this.__style = prevNode.__style;
   }
 
   createDOM() {
     const figure = createElement("figure", { className: "lexxy-math-block" });
+    if (this.__style) {
+      figure.style.cssText = this.__style;
+    }
 
     const preview = createElement("div", { className: "lexxy-math-block__preview" });
     if (this.__latex) {
@@ -174,7 +226,19 @@ class BlockMathNode extends DecoratorNode {
   }
 
   updateDOM(prevNode, dom) {
-    if (this.__latex === prevNode.__latex) return false
+    const styleChanged = this.__style !== prevNode.__style;
+    const latexChanged = this.__latex !== prevNode.__latex;
+    if (!styleChanged && !latexChanged) return false
+
+    if (styleChanged) {
+      if (this.__style) {
+        dom.style.cssText = this.__style;
+      } else {
+        dom.removeAttribute("style");
+      }
+    }
+
+    if (!latexChanged) return false
 
     const preview = dom.querySelector(".lexxy-math-block__preview");
     if (!preview) return true
@@ -203,6 +267,9 @@ class BlockMathNode extends DecoratorNode {
       className: "math-block",
       "data-math": this.__latex
     });
+    if (this.__style) {
+      div.setAttribute("style", this.__style);
+    }
     div.textContent = `$$${this.__latex}$$`;
     return { element: div }
   }
@@ -211,7 +278,8 @@ class BlockMathNode extends DecoratorNode {
     return {
       type: "block_math",
       version: 1,
-      latex: this.__latex
+      latex: this.__latex,
+      style: this.__style
     }
   }
 
@@ -222,6 +290,15 @@ class BlockMathNode extends DecoratorNode {
   setLatex(latex) {
     const writable = this.getWritable();
     writable.__latex = latex;
+  }
+
+  getStyle() {
+    return this.__style
+  }
+
+  setStyle(style = "") {
+    const writable = this.getWritable();
+    writable.__style = style;
   }
 
   decorate() {
@@ -235,8 +312,19 @@ function $isBlockMathNode(node) {
 
 const INSERT_BLOCK_MATH_COMMAND = createCommand();
 const INSERT_INLINE_MATH_COMMAND = createCommand();
+const APPLY_MATH_STYLE_COMMAND = createCommand();
 
 const INLINE_MATH_REGEX = /(?:^|[^$])\$([^$\n]+)\$(?!\$)/;
+
+const MATH_STYLE_PROPERTIES = new Set([
+  "color",
+  "background-color",
+  "font-size",
+  "font-family",
+  "font-style",
+  "font-weight",
+  "text-decoration"
+]);
 
 class MathExtension extends Extension {
   get enabled() {
@@ -265,6 +353,14 @@ class MathExtension extends Extension {
           editor.registerCommand(INSERT_INLINE_MATH_COMMAND, () => (
             $insertInlineMath(), true
           ), COMMAND_PRIORITY_NORMAL),
+
+          editor.registerCommand(FORMAT_TEXT_COMMAND, (formatType) => {
+            return $handleMathFormatCommand(formatType)
+          }, COMMAND_PRIORITY_HIGH),
+
+          editor.registerCommand(APPLY_MATH_STYLE_COMMAND, (payload) => {
+            return $handleApplyMathStyleCommand(payload)
+          }, COMMAND_PRIORITY_NORMAL),
 
           editor.registerCommand(CLICK_COMMAND, ({ target }) => {
             return $handleMathClick(editor, editorElement, target)
@@ -401,6 +497,155 @@ function $insertInlineMath(editor) {
   const node = new InlineMathNode({ latex: "" });
   selection.insertNodes([node]);
   return true
+}
+
+function $handleMathFormatCommand(formatType) {
+  const mathNodes = $getSelectedMathNodes();
+  if (!mathNodes.length) return false
+
+  if (formatType === "bold") {
+    for (const node of mathNodes) {
+      const styles = $parseStyle(node.getStyle());
+      if ($isBoldWeight(styles["font-weight"])) {
+        delete styles["font-weight"];
+      } else {
+        styles["font-weight"] = "bold";
+      }
+      node.setStyle($serializeStyle(styles));
+    }
+  } else if (formatType === "italic") {
+    for (const node of mathNodes) {
+      const styles = $parseStyle(node.getStyle());
+      if ((styles["font-style"] || "").trim() === "italic") {
+        delete styles["font-style"];
+      } else {
+        styles["font-style"] = "italic";
+      }
+      node.setStyle($serializeStyle(styles));
+    }
+  } else if (formatType === "underline" || formatType === "strikethrough") {
+    const decoration = formatType === "underline" ? "underline" : "line-through";
+
+    for (const node of mathNodes) {
+      const styles = $parseStyle(node.getStyle());
+      const nextTextDecoration = $toggleTextDecorationToken(styles["text-decoration"], decoration);
+
+      if (nextTextDecoration) {
+        styles["text-decoration"] = nextTextDecoration;
+      } else {
+        delete styles["text-decoration"];
+      }
+
+      node.setStyle($serializeStyle(styles));
+    }
+  }
+
+  return false
+}
+
+function $handleApplyMathStyleCommand(payload) {
+  const patch = payload?.patch ?? payload;
+  const toggle = payload?.toggle === true;
+
+  return $handleMathStyleCommand(patch, { toggle })
+}
+
+function $handleMathStyleCommand(patch, { toggle = false } = {}) {
+  const normalizedPatch = $normalizeMathStylePatch(patch);
+  if (!normalizedPatch) return false
+
+  const mathNodes = $getSelectedMathNodes();
+  if (!mathNodes.length) return false
+
+  for (const node of mathNodes) {
+    const styles = $parseStyle(node.getStyle());
+
+    for (const [property, value] of Object.entries(normalizedPatch)) {
+      const previousValue = styles[property] || null;
+      const nextValue = toggle ? (previousValue === value ? null : value) : value;
+
+      if (nextValue) {
+        styles[property] = nextValue;
+      } else {
+        delete styles[property];
+      }
+    }
+
+    node.setStyle($serializeStyle(styles));
+  }
+
+  return false
+}
+
+function $getSelectedMathNodes() {
+  const selection = $getSelection();
+  if (!selection) return []
+
+  return selection.getNodes().filter((node) => $isInlineMathNode(node) || $isBlockMathNode(node))
+}
+
+function $normalizeMathStylePatch(patch) {
+  if (!patch || typeof patch !== "object") return null
+
+  const normalizedPatch = {};
+
+  for (const [property, value] of Object.entries(patch)) {
+    if (!MATH_STYLE_PROPERTIES.has(property)) continue
+
+    if (value === null || value === undefined || value === "") {
+      normalizedPatch[property] = null;
+    } else {
+      normalizedPatch[property] = String(value);
+    }
+  }
+
+  return Object.keys(normalizedPatch).length ? normalizedPatch : null
+}
+
+// Lightweight style parsing — avoids dependency on @lexical/selection
+function $parseStyle(cssText) {
+  const styles = {};
+  if (!cssText) return styles
+
+  for (const declaration of cssText.split(";")) {
+    const colon = declaration.indexOf(":");
+    if (colon === -1) continue
+
+    const property = declaration.slice(0, colon).trim();
+    const value = declaration.slice(colon + 1).trim();
+    if (property && value) styles[property] = value;
+  }
+
+  return styles
+}
+
+function $serializeStyle(styles) {
+  return Object.entries(styles)
+    .filter(([, value]) => value != null && value !== "")
+    .map(([property, value]) => `${property}: ${value}`)
+    .join("; ")
+}
+
+function $toggleTextDecorationToken(currentValue, token) {
+  const tokens = new Set(String(currentValue || "").split(/\s+/).filter(Boolean));
+
+  if (tokens.has(token)) {
+    tokens.delete(token);
+  } else {
+    tokens.add(token);
+  }
+
+  return Array.from(tokens).join(" ")
+}
+
+function $isBoldWeight(value) {
+  if (!value) return false
+
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === "bold" || normalized === "bolder") return true
+
+  const numeric = Number.parseInt(normalized, 10);
+  return !Number.isNaN(numeric) && numeric >= 600
 }
 
 function openMathEditor(editor, editorElement, nodeKey, latex, displayMode, targetElement) {
@@ -558,4 +803,4 @@ if (!customElements.get("lexxy-math-editor")) {
   customElements.define("lexxy-math-editor", MathEditor);
 }
 
-export { $isBlockMathNode, $isInlineMathNode, BlockMathNode, INLINE_MATH_REGEX, INSERT_BLOCK_MATH_COMMAND, INSERT_INLINE_MATH_COMMAND, InlineMathNode, MathExtension, renderContentMath, renderMath };
+export { $isBlockMathNode, $isInlineMathNode, APPLY_MATH_STYLE_COMMAND, BlockMathNode, INLINE_MATH_REGEX, INSERT_BLOCK_MATH_COMMAND, INSERT_INLINE_MATH_COMMAND, InlineMathNode, MathExtension, renderContentMath, renderMath };

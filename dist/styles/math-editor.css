@@ -23,6 +23,18 @@
   border-radius: var(--lexxy-radius);
 }
 
+/* KaTeX style inheritance — ensures bold, italic, strikethrough cascade into KaTeX output */
+.lexxy-math-inline .katex,
+.lexxy-math-inline .katex-html,
+.lexxy-math-inline .katex .base,
+.lexxy-math-block__preview .katex,
+.lexxy-math-block__preview .katex-html,
+.lexxy-math-block__preview .katex .base {
+  font-weight: inherit;
+  font-style: inherit;
+  text-decoration: inherit;
+}
+
 .lexxy-math-block__preview--empty {
   color: var(--lexxy-color-ink-medium);
   font-style: italic;
