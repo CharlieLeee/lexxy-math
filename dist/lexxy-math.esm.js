@@ -1,6 +1,6 @@
 import { DecoratorNode, createCommand, defineExtension, TextNode, KEY_ENTER_COMMAND, COMMAND_PRIORITY_HIGH, COMMAND_PRIORITY_NORMAL, FORMAT_TEXT_COMMAND, CLICK_COMMAND, $getSelection, $isRangeSelection, $isParagraphNode, $createParagraphNode, isDOMNode, $getNearestNodeFromDOMNode, $getNodeByKey } from 'lexical';
 import { mergeRegister } from '@lexical/utils';
-import { Extension } from '@37signals/lexxy';
+import { Extension, TOGGLE_HIGHLIGHT_COMMAND, REMOVE_HIGHLIGHT_COMMAND } from '@37signals/lexxy';
 import katex from 'katex';
 
 function createElement(name, properties, content = "") {
@@ -474,6 +474,17 @@ class MathExtension extends Extension {
 
           editor.registerCommand(FORMAT_TEXT_COMMAND, (formatType) => {
             return $handleMathFormatCommand(formatType)
+          }, COMMAND_PRIORITY_HIGH),
+
+          editor.registerCommand(TOGGLE_HIGHLIGHT_COMMAND, (styles) => {
+            return $handleMathStyleCommand(styles, { toggle: true })
+          }, COMMAND_PRIORITY_HIGH),
+
+          editor.registerCommand(REMOVE_HIGHLIGHT_COMMAND, () => {
+            return $handleMathStyleCommand({
+              "color": null,
+              "background-color": null
+            })
           }, COMMAND_PRIORITY_HIGH),
 
           editor.registerCommand(APPLY_MATH_STYLE_COMMAND, (payload) => {
