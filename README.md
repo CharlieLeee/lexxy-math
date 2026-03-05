@@ -8,7 +8,7 @@ KaTeX-based math rendering extension for [Lexxy](https://github.com/basecamp/lex
 npm install lexxy-math
 ```
 
-**Peer dependencies:** `@37signals/lexxy`, `lexical`, `@lexical/utils`
+**Peer dependencies:** `@37signals/lexxy` (>= 0.8.0), `lexical`, `@lexical/utils`
 
 ## Usage
 
@@ -22,23 +22,17 @@ configure({
 })
 ```
 
-### Styles
+That's it. All styles (KaTeX CSS + editor CSS) are auto-injected on first use — no manual CSS imports needed.
 
-Add the editor and content styles to your application:
+### Highlight & color support
 
-```css
-/* In your editor stylesheet */
-@import "lexxy-math/styles/math-editor.css";
+To support highlight and font color on math nodes, Lexxy must export its highlight commands. Add the following exports to your Lexxy build's entry point:
 
-/* In your content stylesheet */
-@import "lexxy-math/styles/math-content.css";
+```js
+export { TOGGLE_HIGHLIGHT_COMMAND, REMOVE_HIGHLIGHT_COMMAND } from "./extensions/highlight_extension"
 ```
 
-You also need KaTeX's CSS for rendering. Either import it from the `katex` package or load it from a CDN:
-
-```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.33/dist/katex.min.css">
-```
+Once exported, `lexxy-math` will automatically intercept these commands and apply styles to selected math nodes.
 
 ### Content rendering
 
@@ -54,12 +48,36 @@ renderContentMath()
 renderContentMath(document.querySelector(".post-body"))
 ```
 
+This finds all elements with `data-math` attributes and renders them with KaTeX.
+
+### Rollup configuration
+
+Since `lexxy-math` imports from `@37signals/lexxy`, you need to alias it to your local Lexxy source in your Rollup config:
+
+```js
+import alias from "@rollup/plugin-alias"
+import path from "path"
+
+export default {
+  plugins: [
+    alias({
+      entries: [
+        { find: "@37signals/lexxy", replacement: path.resolve("src/index.js") }
+      ]
+    }),
+    // ... other plugins
+  ]
+}
+```
+
 ## Features
 
 - **Inline math**: Type `$E=mc^2$` and it auto-converts to rendered math
 - **Block math**: Type `$$` on an empty line and press Enter to create a display-mode math block
 - **Click to edit**: Click any rendered math to open the editor with live KaTeX preview
 - **Keyboard shortcuts**: Escape or Cmd+Enter to confirm, click outside to save
+- **Style inheritance**: Strikethrough, color, and highlight propagate into math nodes
+- **Zero-config CSS**: KaTeX stylesheet and editor styles are auto-injected at runtime
 
 ## Exports
 
@@ -74,6 +92,8 @@ renderContentMath(document.querySelector(".post-body"))
 | `renderContentMath(container)` | Render math in static content |
 | `INSERT_BLOCK_MATH_COMMAND` | Lexical command |
 | `INSERT_INLINE_MATH_COMMAND` | Lexical command |
+| `APPLY_MATH_STYLE_COMMAND` | Lexical command for applying styles to math nodes |
+| `INLINE_MATH_REGEX` | Regex used for inline math detection |
 
 ## License
 
