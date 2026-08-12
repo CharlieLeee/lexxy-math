@@ -1,4 +1,4 @@
-import { renderMath } from "./math_helper"
+import { renderMath } from "./math_helper.js"
 
 export function renderContentMath(container = document) {
   container.querySelectorAll(".math-inline[data-math], .math-block[data-math]").forEach(element => {

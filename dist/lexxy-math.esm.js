@@ -1,7 +1,32 @@
-import { DecoratorNode, createCommand, defineExtension, TextNode, KEY_ENTER_COMMAND, COMMAND_PRIORITY_HIGH, COMMAND_PRIORITY_NORMAL, FORMAT_TEXT_COMMAND, CLICK_COMMAND, $getSelection, $isRangeSelection, $isParagraphNode, $createParagraphNode, isDOMNode, $getNearestNodeFromDOMNode, $getNodeByKey } from 'lexical';
-import { mergeRegister } from '@lexical/utils';
-import { Extension, TOGGLE_HIGHLIGHT_COMMAND, REMOVE_HIGHLIGHT_COMMAND } from '@37signals/lexxy';
+import { Lexical, Extension } from '@37signals/lexxy';
 import katex from 'katex';
+
+// Lexxy exposes the exact Lexical instance used by both its npm and gem builds.
+// Always consume that namespace so extensions do not load a second, incompatible
+// copy of Lexical when they run through importmap-rails.
+const {
+  $createParagraphNode,
+  $getNearestNodeFromDOMNode,
+  $getNodeByKey,
+  $getSelection,
+  $isParagraphNode,
+  $isRangeSelection,
+  CLICK_COMMAND,
+  COMMAND_PRIORITY_HIGH,
+  COMMAND_PRIORITY_NORMAL,
+  DecoratorNode,
+  FORMAT_TEXT_COMMAND,
+  isDOMNode,
+  KEY_ENTER_COMMAND,
+  TextNode,
+  createCommand
+} = Lexical;
+
+function mergeRegistrations(...registrations) {
+  return () => {
+    for (const unregister of registrations) unregister();
+  }
+}
 
 function createElement(name, properties, content = "") {
   const element = document.createElement(name);
@@ -20,7 +45,7 @@ function createElement(name, properties, content = "") {
 
 let injected = false;
 
-const KATEX_CSS_URL = "https://cdn.jsdelivr.net/npm/katex@0.16.35/dist/katex.min.css";
+const KATEX_CSS_URL = "https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/katex.min.css";
 
 const MATH_CSS = `
 /* Inline math */
@@ -51,10 +76,10 @@ const MATH_CSS = `
 /* KaTeX style inheritance */
 .lexxy-math-inline .katex,
 .lexxy-math-inline .katex-html,
-.lexxy-math-inline .katex .base,
+.lexxy-math-inline .katex .katex-base,
 .lexxy-math-block__preview .katex,
 .lexxy-math-block__preview .katex-html,
-.lexxy-math-block__preview .katex .base {
+.lexxy-math-block__preview .katex .katex-base {
   font-weight: inherit;
   font-style: inherit;
   text-decoration: inherit;
@@ -452,11 +477,11 @@ class MathExtension extends Extension {
   get lexicalExtension() {
     const editorElement = this.editorElement;
 
-    return defineExtension({
+    return this.defineExtension({
       name: "lexxy/math",
       nodes: [InlineMathNode, BlockMathNode],
       register(editor) {
-        return mergeRegister(
+        return mergeRegistrations(
           editor.registerNodeTransform(TextNode, $detectInlineMath),
 
           editor.registerCommand(KEY_ENTER_COMMAND, (event) => {
@@ -476,11 +501,11 @@ class MathExtension extends Extension {
             return $handleMathFormatCommand(formatType)
           }, COMMAND_PRIORITY_HIGH),
 
-          editor.registerCommand(TOGGLE_HIGHLIGHT_COMMAND, (styles) => {
+          editor.registerCommand("toggleHighlight", (styles) => {
             return $handleMathStyleCommand(styles, { toggle: true })
           }, COMMAND_PRIORITY_HIGH),
 
-          editor.registerCommand(REMOVE_HIGHLIGHT_COMMAND, () => {
+          editor.registerCommand("removeHighlight", () => {
             return $handleMathStyleCommand({
               "color": null,
               "background-color": null
@@ -820,7 +845,9 @@ function renderContentMath(container = document) {
   });
 }
 
-class MathEditor extends HTMLElement {
+const HTMLElementBase = globalThis.HTMLElement || class {};
+
+class MathEditor extends HTMLElementBase {
   #callback = null
   #displayMode = false
   #handleOutsideClick = null
@@ -928,8 +955,9 @@ class MathEditor extends HTMLElement {
   }
 }
 
-if (!customElements.get("lexxy-math-editor")) {
+if (typeof customElements !== "undefined" && !customElements.get("lexxy-math-editor")) {
   customElements.define("lexxy-math-editor", MathEditor);
 }
 
 export { $isBlockMathNode, $isInlineMathNode, APPLY_MATH_STYLE_COMMAND, BlockMathNode, INLINE_MATH_REGEX, INSERT_BLOCK_MATH_COMMAND, INSERT_INLINE_MATH_COMMAND, InlineMathNode, MathExtension, renderContentMath, renderMath };
+//# sourceMappingURL=lexxy-math.esm.js.map

@@ -1,7 +1,9 @@
-import { createElement } from "../helpers/dom"
-import { renderMath } from "../helpers/math_helper"
+import { createElement } from "../helpers/dom.js"
+import { renderMath } from "../helpers/math_helper.js"
 
-export default class MathEditor extends HTMLElement {
+const HTMLElementBase = globalThis.HTMLElement || class {}
+
+export default class MathEditor extends HTMLElementBase {
   #callback = null
   #displayMode = false
   #handleOutsideClick = null

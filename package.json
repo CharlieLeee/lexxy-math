@@ -1,33 +1,55 @@
 {
   "name": "lexxy-math",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "KaTeX-based math rendering extension for Lexxy",
   "type": "module",
+  "main": "dist/lexxy-math.esm.js",
   "module": "dist/lexxy-math.esm.js",
   "exports": {
     ".": "./dist/lexxy-math.esm.js",
+    "./standalone": "./dist/lexxy-math.standalone.js",
     "./styles/*": "./dist/styles/*"
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "rollup -c"
+    "build": "rollup -c && rollup -c rollup.config.standalone.mjs",
+    "build:demo": "rollup -c rollup.config.demo.mjs",
+    "test": "node --test",
+    "verify": "npm run build && npm test"
   },
   "dependencies": {
-    "katex": "^0.16.33"
+    "katex": "^0.18.4"
   },
   "peerDependencies": {
-    "@37signals/lexxy": "^0.8.0"
+    "@37signals/lexxy": ">=0.9.29 <1"
   },
   "devDependencies": {
+    "@37signals/lexxy": "0.9.29",
+    "@rails/activestorage": "^7.2.302",
+    "@rollup/plugin-commonjs": "^29.0.1",
+    "@rollup/plugin-inject": "^5.0.5",
     "@rollup/plugin-node-resolve": "^16.0.1",
-    "rollup": "^4.44.1",
-    "rollup-plugin-copy": "^3.5.0"
+    "@rollup/plugin-terser": "^1.0.0",
+    "rollup": "^4.44.1"
   },
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/CharlieLeee/lexxy-math.git"
+  },
+  "homepage": "https://github.com/CharlieLeee/lexxy-math#readme",
+  "bugs": "https://github.com/CharlieLeee/lexxy-math/issues",
+  "keywords": [
+    "lexxy",
+    "lexical",
+    "katex",
+    "math",
+    "rails",
+    "importmap"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

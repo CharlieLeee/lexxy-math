@@ -1,6 +1,6 @@
 let injected = false
 
-const KATEX_CSS_URL = "https://cdn.jsdelivr.net/npm/katex@0.16.35/dist/katex.min.css"
+const KATEX_CSS_URL = "https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/katex.min.css"
 
 const MATH_CSS = `
 /* Inline math */
@@ -31,10 +31,10 @@ const MATH_CSS = `
 /* KaTeX style inheritance */
 .lexxy-math-inline .katex,
 .lexxy-math-inline .katex-html,
-.lexxy-math-inline .katex .base,
+.lexxy-math-inline .katex .katex-base,
 .lexxy-math-block__preview .katex,
 .lexxy-math-block__preview .katex-html,
-.lexxy-math-block__preview .katex .base {
+.lexxy-math-block__preview .katex .katex-base {
   font-weight: inherit;
   font-style: inherit;
   text-decoration: inherit;

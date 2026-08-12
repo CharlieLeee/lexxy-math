@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>lexxy-math Demo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@37signals/lexxy@0.9.29/dist/stylesheets/lexxy.css">
+  <link rel="stylesheet" href="styles/math-editor.css">
+  <link rel="stylesheet" href="styles/math-content.css">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2rem 1rem;
+      color: #1a1a1a;
+      background: #fafafa;
+    }
+
+    h1 {
+      font-size: 1.75rem;
+      margin: 0 0 0.25rem;
+    }
+
+    h1 code {
+      font-weight: 600;
+      background: none;
+      padding: 0;
+    }
+
+    .subtitle {
+      color: #666;
+      margin: 0 0 2rem;
+    }
+
+    .subtitle a {
+      color: inherit;
+    }
+
+    h2 {
+      font-size: 1.1rem;
+      margin: 2rem 0 0.75rem;
+    }
+
+    lexxy-editor {
+      font-size: 1rem;
+      min-height: 200px;
+    }
+
+    .tips {
+      background: #fff;
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 1rem 1.25rem;
+      font-size: 0.9rem;
+      line-height: 1.6;
+    }
+
+    .tips code {
+      background: #f0f0f0;
+      border-radius: 3px;
+      padding: 0.15em 0.4em;
+      font-size: 0.85em;
+    }
+
+    .tips ul {
+      margin: 0;
+      padding-left: 1.25rem;
+    }
+
+    .tips li + li {
+      margin-top: 0.35rem;
+    }
+
+    footer {
+      margin-top: 3rem;
+      padding-top: 1rem;
+      border-top: 1px solid #e5e5e5;
+      font-size: 0.85rem;
+      color: #999;
+    }
+
+    footer a { color: #666; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><code>lexxy-math</code></h1>
+    <p class="subtitle">KaTeX-based math rendering for <a href="https://github.com/basecamp/lexxy">Lexxy</a></p>
+  </header>
+
+  <main>
+    <h2>Try it</h2>
+    <lexxy-editor placeholder="Type $E=mc^2$ for inline math, or type $$ on a new line for block math..."></lexxy-editor>
+
+    <h2>How to use</h2>
+    <div class="tips">
+      <ul>
+        <li><strong>Inline math</strong> &mdash; type <code>$E=mc^2$</code> and it auto-converts</li>
+        <li><strong>Block math</strong> &mdash; type <code>$$</code> on an empty line, then press Enter</li>
+        <li><strong>Edit</strong> &mdash; click any rendered math to open the editor with live preview</li>
+        <li><strong>Confirm</strong> &mdash; press Escape or Cmd+Enter to save</li>
+      </ul>
+    </div>
+  </main>
+
+  <footer>
+    <a href="https://github.com/CharlieLeee/lexxy-math">GitHub</a>
+  </footer>
+
+  <script type="module" src="demo.js"></script>
+</body>
+</html>

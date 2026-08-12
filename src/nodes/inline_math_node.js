@@ -1,6 +1,6 @@
-import { DecoratorNode } from "@37signals/lexxy"
-import { createElement } from "../helpers/dom"
-import { renderMath } from "../helpers/math_helper"
+import { DecoratorNode } from "../lexxy.js"
+import { createElement } from "../helpers/dom.js"
+import { renderMath } from "../helpers/math_helper.js"
 
 export class InlineMathNode extends DecoratorNode {
   $config() {

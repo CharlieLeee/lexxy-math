@@ -1,32 +1,23 @@
 import resolve from "@rollup/plugin-node-resolve"
 import commonjs from "@rollup/plugin-commonjs"
-import copy from "rollup-plugin-copy"
+import terser from "@rollup/plugin-terser"
 
-// Standalone build that bundles katex but externalizes lexxy + lexical
-// (lexxy's bundle already includes lexical)
+// Importmap build: bundle KaTeX, but use the Lexical instance exposed by the
+// host `lexxy` gem. Bundling Lexical here would create incompatible node types.
 export default {
   input: "src/index.js",
   output: {
     file: "dist/lexxy-math.standalone.js",
     format: "esm",
+    sourcemap: true,
     paths: {
-      "lexical": "lexxy",
-      "@lexical/utils": "lexxy",
       "@37signals/lexxy": "lexxy"
     }
   },
-  external: [
-    "lexical",
-    /^@lexical\//,
-    "@37signals/lexxy"
-  ],
+  external: ["@37signals/lexxy"],
   plugins: [
     resolve(),
     commonjs(),
-    copy({
-      targets: [
-        { src: "styles/*", dest: "dist/styles" }
-      ]
-    })
+    terser()
   ]
 }

@@ -1,5 +1,5 @@
 import katex from "katex"
-import { injectStyles } from "./styles"
+import { injectStyles } from "./styles.js"
 
 export function renderMath(latex, { displayMode = false } = {}) {
   injectStyles()

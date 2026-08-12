@@ -2,11 +2,10 @@ import {
   $createParagraphNode, $getNodeByKey, $getSelection, $getNearestNodeFromDOMNode,
   $isRangeSelection, $isParagraphNode, CLICK_COMMAND, COMMAND_PRIORITY_HIGH,
   COMMAND_PRIORITY_NORMAL, FORMAT_TEXT_COMMAND, TextNode, createCommand,
-  defineExtension, isDOMNode, KEY_ENTER_COMMAND, mergeRegister,
-  Extension, TOGGLE_HIGHLIGHT_COMMAND, REMOVE_HIGHLIGHT_COMMAND
-} from "@37signals/lexxy"
-import { InlineMathNode, $isInlineMathNode } from "../nodes/inline_math_node"
-import { BlockMathNode, $isBlockMathNode } from "../nodes/block_math_node"
+  isDOMNode, KEY_ENTER_COMMAND, mergeRegistrations, Extension
+} from "../lexxy.js"
+import { InlineMathNode, $isInlineMathNode } from "../nodes/inline_math_node.js"
+import { BlockMathNode, $isBlockMathNode } from "../nodes/block_math_node.js"
 
 export const INSERT_BLOCK_MATH_COMMAND = createCommand()
 export const INSERT_INLINE_MATH_COMMAND = createCommand()
@@ -32,11 +31,11 @@ export class MathExtension extends Extension {
   get lexicalExtension() {
     const editorElement = this.editorElement
 
-    return defineExtension({
+    return this.defineExtension({
       name: "lexxy/math",
       nodes: [InlineMathNode, BlockMathNode],
       register(editor) {
-        return mergeRegister(
+        return mergeRegistrations(
           editor.registerNodeTransform(TextNode, $detectInlineMath),
 
           editor.registerCommand(KEY_ENTER_COMMAND, (event) => {
@@ -56,11 +55,11 @@ export class MathExtension extends Extension {
             return $handleMathFormatCommand(formatType)
           }, COMMAND_PRIORITY_HIGH),
 
-          editor.registerCommand(TOGGLE_HIGHLIGHT_COMMAND, (styles) => {
+          editor.registerCommand("toggleHighlight", (styles) => {
             return $handleMathStyleCommand(styles, { toggle: true })
           }, COMMAND_PRIORITY_HIGH),
 
-          editor.registerCommand(REMOVE_HIGHLIGHT_COMMAND, () => {
+          editor.registerCommand("removeHighlight", () => {
             return $handleMathStyleCommand({
               "color": null,
               "background-color": null

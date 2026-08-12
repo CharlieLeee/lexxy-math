@@ -1,0 +1,11 @@
+/* Math in rendered content */
+.math-inline {
+  display: inline;
+}
+
+.math-block {
+  display: flex;
+  justify-content: center;
+  margin: 1em 0;
+  overflow-x: auto;
+}
