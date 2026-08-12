@@ -37,7 +37,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/CharlieLeee/lexxy-math.git"
+    "url": "git+https://github.com/CharlieLeee/lexxy-math.git"
   },
   "homepage": "https://github.com/CharlieLeee/lexxy-math#readme",
   "bugs": "https://github.com/CharlieLeee/lexxy-math/issues",
