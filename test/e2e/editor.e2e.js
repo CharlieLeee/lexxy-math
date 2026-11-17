@@ -19,12 +19,12 @@ const FORMATS = [
 let server, browser, page, errors
 
 before(async () => {
-  server = await serveDirectory(new URL("../../docs/", import.meta.url))
+  server = await serveDirectory(new URL("../../", import.meta.url))
   browser = await chromium.launch()
   page = await browser.newPage({ viewport: { width: 1400, height: 1000 } })
   errors = []
   page.on("pageerror", (error) => errors.push(error.message))
-  await page.goto(server.url, { waitUntil: "networkidle" })
+  await page.goto(`${server.url}docs/`, { waitUntil: "networkidle" })
 })
 
 after(async () => {
@@ -325,6 +325,32 @@ describe("typing", () => {
     await page.keyboard.press("Escape")
     await page.waitForTimeout(150)
     assert.match(await savedHtml(), /<div class="math-block" data-math="\\frac\{1\}\{2\}">/)
+  })
+})
+
+describe("renderTextMath", () => {
+  test("renders $...$ and $$...$$ text once, leaving prices, code and escapes", async () => {
+    const fixture = await browser.newPage()
+    await fixture.goto(`${server.url}test/e2e/fixtures/text_math.html`)
+    await fixture.waitForSelector("html[data-ready]")
+
+    const rendered = await fixture.evaluate(() => {
+      const content = document.querySelector(".content")
+      window.renderTextMath(content)
+      window.renderTextMath(content)
+      return {
+        math: [...content.querySelectorAll(".math-inline, .math-block")].map((el) => `${el.className}:${el.dataset.math}`),
+        katex: content.querySelectorAll(".katex").length,
+        text: content.textContent
+      }
+    })
+    await fixture.close()
+
+    assert.deepEqual(rendered.math, ["math-inline:x", "math-inline:x^y", "math-block:\\int_0^1 x\\,dx", "math-inline:b"])
+    assert.equal(rendered.katex, 4)
+    assert.match(rendered.text, /costs \$5 and \$10 stay text/)
+    assert.match(rendered.text, /keep \$a\$/)
+    assert.match(rendered.text, /\\\$c\$ escaped/)
   })
 })
 

@@ -2,7 +2,7 @@ import { createServer } from "node:http"
 import { readFile } from "node:fs/promises"
 import { extname } from "node:path"
 
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css" }
+const TYPES = { ".html": "text/html", ".js": "text/javascript", ".mjs": "text/javascript", ".css": "text/css" }
 
 // Serves a directory on a random local port for the e2e tests.
 export function serveDirectory(rootUrl) {

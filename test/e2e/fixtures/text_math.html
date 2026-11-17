@@ -1,0 +1,14 @@
+<!doctype html>
+<meta charset="utf-8">
+<script type="importmap">{ "imports": { "katex": "/node_modules/katex/dist/katex.mjs" } }</script>
+<div class="content">
+  <p>We model it as $x$. Then $x^y$ grows, while costs $5 and $10 stay text.</p>
+  <p>Block: $$\int_0^1 x\,dx$$ end</p>
+  <pre>keep $a$</pre>
+  <p><strong>$b$</strong> and \$c$ escaped</p>
+</div>
+<script type="module">
+  import { renderTextMath } from "/src/helpers/math_text_helper.js"
+  window.renderTextMath = renderTextMath
+  document.documentElement.dataset.ready = "true"
+</script>

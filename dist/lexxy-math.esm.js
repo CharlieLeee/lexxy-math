@@ -193,10 +193,13 @@ function injectStyles() {
   if (injected || typeof document === "undefined") return
   injected = true;
 
-  const link = document.createElement("link");
-  link.rel = "stylesheet";
-  link.href = KATEX_CSS_URL;
-  document.head.appendChild(link);
+  // Pages that serve KaTeX's CSS themselves mark it with data-lexxy-math-katex
+  if (!document.querySelector("[data-lexxy-math-katex]")) {
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = KATEX_CSS_URL;
+    document.head.appendChild(link);
+  }
 
   const style = document.createElement("style");
   style.textContent = CONTENT_CSS + EDITOR_CSS;
@@ -573,6 +576,7 @@ function $isBlockMathNode(node) {
 // Pandoc rules: no space just inside the dollars, no escaped dollar, and no digit right
 // after the closing one, so prices like "$5 and $10" stay text.
 const INLINE_MATH_REGEX = /(?:^|[^$\\])\$([^\s$](?:[^$\n]*[^\s$\\])?)\$(?![$\d])/;
+const DISPLAY_MATH_REGEX = /(?:^|[^\\])\$\$([^$]+?)\$\$/;
 
 // Returns the first inline formula in text as { latex, start, end }, or null.
 function findInlineMath(text) {
@@ -583,6 +587,21 @@ function findInlineMath(text) {
   if (isInsideOpenBacktick(text, start)) return null
 
   return { latex: match[1], start, end: match.index + match[0].length }
+}
+
+// Returns the first $$display$$ or $inline$ formula in text as { latex, start, end, displayMode }, or null.
+function findMath(text) {
+  const inline = findInlineMath(text);
+  const match = DISPLAY_MATH_REGEX.exec(text);
+  const display = match && {
+    latex: match[1].trim(),
+    start: match[0].startsWith("$") ? match.index : match.index + 1,
+    end: match.index + match[0].length,
+    displayMode: true
+  };
+
+  if (display && (!inline || display.start <= inline.start)) return display
+  return inline && { ...inline, displayMode: false }
 }
 
 // Typing `$x$` should become inline code, not math inside backticks.
@@ -879,6 +898,46 @@ function renderContentMath(container = document) {
   });
 }
 
+const SKIPPED = "code, pre, script, style, textarea, [contenteditable], lexxy-editor, .katex, .math-inline, .math-block";
+
+// Renders math written as plain $...$ and $$...$$ text, e.g. in content saved without
+// lexxy-math or by a server that strips data-math. Uses the same rules as the editor.
+function renderTextMath(container = document.body) {
+  const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT, {
+    acceptNode: (node) => node.nodeValue.includes("$") && !node.parentElement?.closest(SKIPPED)
+      ? NodeFilter.FILTER_ACCEPT
+      : NodeFilter.FILTER_REJECT
+  });
+
+  const textNodes = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode);
+  textNodes.forEach(renderTextNode);
+}
+
+function renderTextNode(node) {
+  const fragment = document.createDocumentFragment();
+  let text = node.nodeValue;
+  let match;
+
+  while ((match = findMath(text))) {
+    fragment.append(text.slice(0, match.start), mathElement(match));
+    text = text.slice(match.end);
+  }
+
+  if (text === node.nodeValue) return
+
+  fragment.append(text);
+  node.replaceWith(fragment);
+}
+
+function mathElement({ latex, displayMode }) {
+  const element = document.createElement("span");
+  element.className = displayMode ? "math-block" : "math-inline";
+  element.dataset.math = latex;
+  element.innerHTML = renderMath(latex, { displayMode });
+  return element
+}
+
 const HTMLElementBase = globalThis.HTMLElement || class {};
 
 class MathEditor extends HTMLElementBase {
@@ -993,5 +1052,5 @@ if (typeof customElements !== "undefined" && !customElements.get("lexxy-math-edi
   customElements.define("lexxy-math-editor", MathEditor);
 }
 
-export { $isBlockMathNode, $isInlineMathNode, APPLY_MATH_STYLE_COMMAND, BlockMathNode, INLINE_MATH_REGEX, INSERT_BLOCK_MATH_COMMAND, INSERT_INLINE_MATH_COMMAND, InlineMathNode, MathExtension, renderContentMath, renderMath };
+export { $isBlockMathNode, $isInlineMathNode, APPLY_MATH_STYLE_COMMAND, BlockMathNode, INLINE_MATH_REGEX, INSERT_BLOCK_MATH_COMMAND, INSERT_INLINE_MATH_COMMAND, InlineMathNode, MathExtension, renderContentMath, renderMath, renderTextMath };
 //# sourceMappingURL=lexxy-math.esm.js.map

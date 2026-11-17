@@ -147,10 +147,13 @@ export function injectStyles() {
   if (injected || typeof document === "undefined") return
   injected = true
 
-  const link = document.createElement("link")
-  link.rel = "stylesheet"
-  link.href = KATEX_CSS_URL
-  document.head.appendChild(link)
+  // Pages that serve KaTeX's CSS themselves mark it with data-lexxy-math-katex
+  if (!document.querySelector("[data-lexxy-math-katex]")) {
+    const link = document.createElement("link")
+    link.rel = "stylesheet"
+    link.href = KATEX_CSS_URL
+    document.head.appendChild(link)
+  }
 
   const style = document.createElement("style")
   style.textContent = CONTENT_CSS + EDITOR_CSS

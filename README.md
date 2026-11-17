@@ -2,7 +2,7 @@
 
 KaTeX-based math rendering for [Lexxy](https://github.com/basecamp/lexxy), with inline (`$...$`) and block (`$$...$$`) math, live preview editing, and support for both npm bundlers and Rails import maps.
 
-**[Live demo](https://charlieleee.github.io/lexxy-math/)**
+**[Live demo](https://charlieleee.github.io/lexxy-math/)** · Using Basecamp? Try the [Math for Basecamp](https://github.com/CharlieLeee/lexxy-math-basecamp) browser extension.
 
 ## Requirements
 
@@ -35,7 +35,7 @@ First update the `lexxy` gem to 0.9.29 or newer. Then vendor the standalone buil
 
 ```bash
 curl --fail --location \
-  "https://cdn.jsdelivr.net/npm/lexxy-math@1.3.0/dist/lexxy-math.standalone.js" \
+  "https://cdn.jsdelivr.net/npm/lexxy-math@1.4.0/dist/lexxy-math.standalone.js" \
   --output vendor/javascript/lexxy-math.js
 ```
 
@@ -66,7 +66,11 @@ The standalone build is also exported as `lexxy-math/standalone` for tools that 
 
 Editor and content styles are injected the first time math renders, in the editor or through `renderContentMath`. The matching KaTeX stylesheet is loaded from jsDelivr, so the default setup needs no CSS import.
 
-For a strict Content Security Policy or an offline application, serve `katex/dist/katex.min.css` and its fonts locally. The default CDN request can then be blocked without affecting rendering.
+For a strict Content Security Policy or an offline application, serve `katex/dist/katex.min.css` and its fonts yourself and mark the stylesheet with `data-lexxy-math-katex`. The CDN request is then skipped:
+
+```html
+<link rel="stylesheet" href="/katex/katex.min.css" data-lexxy-math-katex>
+```
 
 ## Content rendering
 
@@ -84,6 +88,14 @@ import { renderContentMath } from "lexxy-math"
 
 renderContentMath() // the full document
 renderContentMath(document.querySelector(".post-body")) // one container
+```
+
+Content saved without lexxy-math, or by a server that strips `data-math`, may hold math as plain `$...$` and `$$...$$` text. `renderTextMath` renders it with the same rules as the editor, skipping code, prices and escaped `\$`:
+
+```js
+import { renderTextMath } from "lexxy-math"
+
+renderTextMath(document.querySelector(".post-body"))
 ```
 
 ## Features
@@ -107,6 +119,7 @@ renderContentMath(document.querySelector(".post-body")) // one container
 | `$isBlockMathNode(node)` | Block math type guard |
 | `renderMath(latex, options)` | KaTeX rendering wrapper |
 | `renderContentMath(container)` | Render math in saved content |
+| `renderTextMath(container)` | Render plain `$...$` and `$$...$$` text |
 | `INSERT_BLOCK_MATH_COMMAND` | Insert a block math node |
 | `INSERT_INLINE_MATH_COMMAND` | Insert an inline math node |
 | `APPLY_MATH_STYLE_COMMAND` | Apply styles to selected math nodes |

@@ -1,6 +1,6 @@
 {
   "name": "lexxy-math",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "KaTeX-based math rendering extension for Lexxy",
   "type": "module",
   "main": "dist/lexxy-math.esm.js",
