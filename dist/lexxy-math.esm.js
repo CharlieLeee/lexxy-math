@@ -1052,5 +1052,5 @@ if (typeof customElements !== "undefined" && !customElements.get("lexxy-math-edi
   customElements.define("lexxy-math-editor", MathEditor);
 }
 
-export { $isBlockMathNode, $isInlineMathNode, APPLY_MATH_STYLE_COMMAND, BlockMathNode, INLINE_MATH_REGEX, INSERT_BLOCK_MATH_COMMAND, INSERT_INLINE_MATH_COMMAND, InlineMathNode, MathExtension, renderContentMath, renderMath, renderTextMath };
+export { $isBlockMathNode, $isInlineMathNode, APPLY_MATH_STYLE_COMMAND, BlockMathNode, INLINE_MATH_REGEX, INSERT_BLOCK_MATH_COMMAND, INSERT_INLINE_MATH_COMMAND, InlineMathNode, MathExtension, findMath, renderContentMath, renderMath, renderTextMath };
 //# sourceMappingURL=lexxy-math.esm.js.map

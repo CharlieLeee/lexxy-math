@@ -35,7 +35,7 @@ First update the `lexxy` gem to 0.9.29 or newer. Then vendor the standalone buil
 
 ```bash
 curl --fail --location \
-  "https://cdn.jsdelivr.net/npm/lexxy-math@1.4.0/dist/lexxy-math.standalone.js" \
+  "https://cdn.jsdelivr.net/npm/lexxy-math@1.5.0/dist/lexxy-math.standalone.js" \
   --output vendor/javascript/lexxy-math.js
 ```
 
@@ -120,6 +120,7 @@ renderTextMath(document.querySelector(".post-body"))
 | `renderMath(latex, options)` | KaTeX rendering wrapper |
 | `renderContentMath(container)` | Render math in saved content |
 | `renderTextMath(container)` | Render plain `$...$` and `$$...$$` text |
+| `findMath(text)` | First `$...$` or `$$...$$` formula in text as `{ latex, start, end, displayMode }`, or `null` |
 | `INSERT_BLOCK_MATH_COMMAND` | Insert a block math node |
 | `INSERT_INLINE_MATH_COMMAND` | Insert an inline math node |
 | `APPLY_MATH_STYLE_COMMAND` | Apply styles to selected math nodes |
