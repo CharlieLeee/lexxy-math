@@ -1,6 +1,7 @@
 import { DecoratorNode } from "../lexxy.js"
 import { createElement } from "../helpers/dom.js"
 import { renderMath } from "../helpers/math_helper.js"
+import { renderFormatted, styleFromDOM } from "../helpers/math_format.js"
 
 export class InlineMathNode extends DecoratorNode {
   $config() {
@@ -17,7 +18,7 @@ export class InlineMathNode extends DecoratorNode {
             conversion: (span) => ({
               node: new InlineMathNode({
                 latex: span.getAttribute("data-math"),
-                style: span.getAttribute("style") || ""
+                style: styleFromDOM(span)
               })
             }),
             priority: 2
@@ -45,41 +46,13 @@ export class InlineMathNode extends DecoratorNode {
       "data-lexxy-decorator": true
     })
 
-    if (this.__style) {
-      span.style.cssText = this.__style
-    }
-
-    if (this.__latex) {
-      span.innerHTML = renderMath(this.__latex)
-    } else {
-      span.textContent = "$\\ldots$"
-    }
-
-    return span
+    const content = this.__latex ? { html: renderMath(this.__latex) } : { text: "$\\ldots$" }
+    return renderFormatted(span, this.__style, content)
   }
 
-  updateDOM(prevNode, dom) {
-    const styleChanged = this.__style !== prevNode.__style
-    const latexChanged = this.__latex !== prevNode.__latex
-    if (!styleChanged && !latexChanged) return false
-
-    if (styleChanged) {
-      if (this.__style) {
-        dom.style.cssText = this.__style
-      } else {
-        dom.removeAttribute("style")
-      }
-    }
-
-    if (latexChanged) {
-      if (this.__latex) {
-        dom.innerHTML = renderMath(this.__latex)
-      } else {
-        dom.textContent = "$\\ldots$"
-      }
-    }
-
-    return false
+  // Returning true makes Lexical recreate the DOM through createDOM
+  updateDOM(prevNode) {
+    return this.__style !== prevNode.__style || this.__latex !== prevNode.__latex
   }
 
   getTextContent() {
@@ -95,11 +68,7 @@ export class InlineMathNode extends DecoratorNode {
       className: "math-inline",
       "data-math": this.__latex
     })
-    if (this.__style) {
-      span.setAttribute("style", this.__style)
-    }
-    span.textContent = `$${this.__latex}$`
-    return { element: span }
+    return { element: renderFormatted(span, this.__style, { text: `$${this.__latex}$` }) }
   }
 
   exportJSON() {

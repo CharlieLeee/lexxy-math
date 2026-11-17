@@ -2,16 +2,16 @@ import {
   $createParagraphNode, $getNodeByKey, $getSelection, $getNearestNodeFromDOMNode,
   $isRangeSelection, $isParagraphNode, CLICK_COMMAND, COMMAND_PRIORITY_HIGH,
   COMMAND_PRIORITY_NORMAL, FORMAT_TEXT_COMMAND, TextNode, createCommand,
-  isDOMNode, KEY_ENTER_COMMAND, mergeRegistrations, Extension
+  isDOMNode, $isTextNode, KEY_ENTER_COMMAND, mergeRegistrations, Extension
 } from "../lexxy.js"
 import { InlineMathNode, $isInlineMathNode } from "../nodes/inline_math_node.js"
 import { BlockMathNode, $isBlockMathNode } from "../nodes/block_math_node.js"
+import { parseStyle, serializeStyle, isMathFormat, hasMathFormat, setMathFormat } from "../helpers/math_format.js"
+import { findInlineMath } from "../helpers/inline_math_syntax.js"
 
 export const INSERT_BLOCK_MATH_COMMAND = createCommand()
 export const INSERT_INLINE_MATH_COMMAND = createCommand()
 export const APPLY_MATH_STYLE_COMMAND = createCommand()
-
-export const INLINE_MATH_REGEX = /(?:^|[^$])\$([^$\n]+)\$(?!\$)/
 
 const MATH_STYLE_PROPERTIES = new Set([
   "color",
@@ -59,6 +59,11 @@ export class MathExtension extends Extension {
             return $handleMathStyleCommand(styles, { toggle: true })
           }, COMMAND_PRIORITY_HIGH),
 
+          editor.registerCommand("clearFormatting", () => {
+            $getSelectedMathNodes().forEach((node) => node.setStyle(""))
+            return false
+          }, COMMAND_PRIORITY_HIGH),
+
           editor.registerCommand("removeHighlight", () => {
             return $handleMathStyleCommand({
               "color": null,
@@ -80,33 +85,13 @@ export class MathExtension extends Extension {
 }
 
 function $detectInlineMath(textNode) {
-  const text = textNode.getTextContent()
-  const match = INLINE_MATH_REGEX.exec(text)
+  if (textNode.hasFormat("code")) return
 
+  const match = findInlineMath(textNode.getTextContent())
   if (!match) return
 
-  const latex = match[1]
-  const matchStart = match[0].startsWith("$") ? match.index : match.index + 1
-  const matchEnd = match.index + match[0].length
-
-  let nodeToSplit = textNode
-  let currentOffset = 0
-
-  if (matchStart > 0) {
-    const [before] = nodeToSplit.splitText(matchStart)
-    nodeToSplit = before.getNextSibling()
-    currentOffset = matchStart
-  }
-
-  const mathNode = new InlineMathNode({ latex })
-
-  if (matchEnd < text.length) {
-    const splitOffset = matchEnd - currentOffset
-    const [mathText] = nodeToSplit.splitText(splitOffset)
-    mathText.replace(mathNode)
-  } else {
-    nodeToSplit.replace(mathNode)
-  }
+  const parts = textNode.splitText(match.start, match.end)
+  parts[match.start > 0 ? 1 : 0].replace(new InlineMathNode({ latex: match.latex }))
 }
 
 function $handleBlockMathTrigger(editor, editorElement, event) {
@@ -150,27 +135,15 @@ function $handleMathClick(editor, editorElement, target) {
   const targetNode = $getNearestNodeFromDOMNode(target)
   if (!targetNode) return false
 
-  if ($isBlockMathNode(targetNode)) {
-    const nodeKey = targetNode.getKey()
-    const latex = targetNode.getLatex()
-    requestAnimationFrame(() => {
-      const targetElement = editor.getElementByKey(nodeKey)
-      openMathEditor(editor, editorElement, nodeKey, latex, true, targetElement)
-    })
-    return true
-  }
+  const displayMode = $isBlockMathNode(targetNode)
+  if (!displayMode && !$isInlineMathNode(targetNode)) return false
 
-  if ($isInlineMathNode(targetNode)) {
-    const nodeKey = targetNode.getKey()
-    const latex = targetNode.getLatex()
-    requestAnimationFrame(() => {
-      const targetElement = editor.getElementByKey(nodeKey)
-      openMathEditor(editor, editorElement, nodeKey, latex, false, targetElement)
-    })
-    return true
-  }
-
-  return false
+  const nodeKey = targetNode.getKey()
+  const latex = targetNode.getLatex()
+  requestAnimationFrame(() => {
+    openMathEditor(editor, editorElement, nodeKey, latex, displayMode, editor.getElementByKey(nodeKey))
+  })
+  return true
 }
 
 function $insertBlockMath(editor, editorElement) {
@@ -207,47 +180,19 @@ function $insertInlineMath(editor) {
   return true
 }
 
+// Mirrors Lexical's toggle: the first selected text node decides whether the format turns on or off.
 function $handleMathFormatCommand(formatType) {
+  if (!isMathFormat(formatType)) return false
+
   const mathNodes = $getSelectedMathNodes()
   if (!mathNodes.length) return false
 
-  if (formatType === "bold") {
-    for (const node of mathNodes) {
-      const styles = $parseStyle(node.getStyle())
-      if ($isBoldWeight(styles["font-weight"])) {
-        delete styles["font-weight"]
-      } else {
-        styles["font-weight"] = "bold"
-      }
-      node.setStyle($serializeStyle(styles))
-    }
-  } else if (formatType === "italic") {
-    for (const node of mathNodes) {
-      const styles = $parseStyle(node.getStyle())
-      if ((styles["font-style"] || "").trim() === "italic") {
-        delete styles["font-style"]
-      } else {
-        styles["font-style"] = "italic"
-      }
-      node.setStyle($serializeStyle(styles))
-    }
-  } else if (formatType === "underline" || formatType === "strikethrough") {
-    const decoration = formatType === "underline" ? "underline" : "line-through"
+  const firstTextNode = $getSelection().getNodes().find($isTextNode)
+  const enabled = firstTextNode
+    ? !firstTextNode.hasFormat(formatType)
+    : !mathNodes.every((node) => hasMathFormat(node.getStyle(), formatType))
 
-    for (const node of mathNodes) {
-      const styles = $parseStyle(node.getStyle())
-      const nextTextDecoration = $toggleTextDecorationToken(styles["text-decoration"], decoration)
-
-      if (nextTextDecoration) {
-        styles["text-decoration"] = nextTextDecoration
-      } else {
-        delete styles["text-decoration"]
-      }
-
-      node.setStyle($serializeStyle(styles))
-    }
-  }
-
+  mathNodes.forEach((node) => node.setStyle(setMathFormat(node.getStyle(), formatType, enabled)))
   return false
 }
 
@@ -266,7 +211,7 @@ function $handleMathStyleCommand(patch, { toggle = false } = {}) {
   if (!mathNodes.length) return false
 
   for (const node of mathNodes) {
-    const styles = $parseStyle(node.getStyle())
+    const styles = parseStyle(node.getStyle())
 
     for (const [property, value] of Object.entries(normalizedPatch)) {
       const previousValue = styles[property] || null
@@ -279,7 +224,7 @@ function $handleMathStyleCommand(patch, { toggle = false } = {}) {
       }
     }
 
-    node.setStyle($serializeStyle(styles))
+    node.setStyle(serializeStyle(styles))
   }
 
   return false
@@ -308,52 +253,6 @@ function $normalizeMathStylePatch(patch) {
   }
 
   return Object.keys(normalizedPatch).length ? normalizedPatch : null
-}
-
-// Lightweight style parsing — avoids dependency on @lexical/selection
-function $parseStyle(cssText) {
-  const styles = {}
-  if (!cssText) return styles
-
-  for (const declaration of cssText.split(";")) {
-    const colon = declaration.indexOf(":")
-    if (colon === -1) continue
-
-    const property = declaration.slice(0, colon).trim()
-    const value = declaration.slice(colon + 1).trim()
-    if (property && value) styles[property] = value
-  }
-
-  return styles
-}
-
-function $serializeStyle(styles) {
-  return Object.entries(styles)
-    .filter(([, value]) => value != null && value !== "")
-    .map(([property, value]) => `${property}: ${value}`)
-    .join("; ")
-}
-
-function $toggleTextDecorationToken(currentValue, token) {
-  const tokens = new Set(String(currentValue || "").split(/\s+/).filter(Boolean))
-
-  if (tokens.has(token)) {
-    tokens.delete(token)
-  } else {
-    tokens.add(token)
-  }
-
-  return Array.from(tokens).join(" ")
-}
-
-function $isBoldWeight(value) {
-  if (!value) return false
-
-  const normalized = String(value).trim().toLowerCase()
-  if (normalized === "bold" || normalized === "bolder") return true
-
-  const numeric = Number.parseInt(normalized, 10)
-  return !Number.isNaN(numeric) && numeric >= 600
 }
 
 function openMathEditor(editor, editorElement, nodeKey, latex, displayMode, targetElement) {

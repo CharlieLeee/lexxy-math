@@ -36,3 +36,10 @@ test("package exports both supported builds", async () => {
   assert.equal(packageJson.exports["./standalone"], "./dist/lexxy-math.standalone.js")
   assert.equal(packageJson.peerDependencies["@37signals/lexxy"], ">=0.9.29 <1")
 })
+
+test("stylesheets are generated from the runtime styles", async () => {
+  const { CONTENT_CSS, EDITOR_CSS } = await import("../src/helpers/styles.js")
+
+  assert.equal(await read("dist/styles/math-content.css"), CONTENT_CSS.trimStart())
+  assert.equal(await read("dist/styles/math-editor.css"), EDITOR_CSS.trimStart())
+})

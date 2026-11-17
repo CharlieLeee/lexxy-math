@@ -1,4 +1,5 @@
-export { MathExtension, INSERT_BLOCK_MATH_COMMAND, INSERT_INLINE_MATH_COMMAND, APPLY_MATH_STYLE_COMMAND, INLINE_MATH_REGEX } from "./extensions/math_extension.js"
+export { MathExtension, INSERT_BLOCK_MATH_COMMAND, INSERT_INLINE_MATH_COMMAND, APPLY_MATH_STYLE_COMMAND } from "./extensions/math_extension.js"
+export { INLINE_MATH_REGEX } from "./helpers/inline_math_syntax.js"
 export { InlineMathNode, $isInlineMathNode } from "./nodes/inline_math_node.js"
 export { BlockMathNode, $isBlockMathNode } from "./nodes/block_math_node.js"
 export { renderMath } from "./helpers/math_helper.js"

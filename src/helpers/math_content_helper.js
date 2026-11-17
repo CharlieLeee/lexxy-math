@@ -1,4 +1,5 @@
 import { renderMath } from "./math_helper.js"
+import { formattedContentTarget } from "./math_format.js"
 
 export function renderContentMath(container = document) {
   container.querySelectorAll(".math-inline[data-math], .math-block[data-math]").forEach(element => {
@@ -6,6 +7,6 @@ export function renderContentMath(container = document) {
     if (!latex) return
 
     const displayMode = element.classList.contains("math-block")
-    element.innerHTML = renderMath(latex, { displayMode })
+    formattedContentTarget(element).innerHTML = renderMath(latex, { displayMode })
   })
 }

@@ -35,7 +35,7 @@ First update the `lexxy` gem to 0.9.29 or newer. Then vendor the standalone buil
 
 ```bash
 curl --fail --location \
-  "https://cdn.jsdelivr.net/npm/lexxy-math@1.2.0/dist/lexxy-math.standalone.js" \
+  "https://cdn.jsdelivr.net/npm/lexxy-math@1.3.0/dist/lexxy-math.standalone.js" \
   --output vendor/javascript/lexxy-math.js
 ```
 
@@ -64,13 +64,20 @@ The standalone build is also exported as `lexxy-math/standalone` for tools that 
 
 ## Styles
 
-Editor styles are injected on first use. The matching KaTeX stylesheet is loaded from jsDelivr, so the default setup needs no CSS import.
+Editor and content styles are injected the first time math renders, in the editor or through `renderContentMath`. The matching KaTeX stylesheet is loaded from jsDelivr, so the default setup needs no CSS import.
 
 For a strict Content Security Policy or an offline application, serve `katex/dist/katex.min.css` and its fonts locally. The default CDN request can then be blocked without affecting rendering.
 
 ## Content rendering
 
-Saved Lexxy content keeps math as semantic elements with their LaTeX source in `data-math`. Render those elements outside the editor with `renderContentMath`:
+Saved Lexxy content keeps math as semantic elements with their LaTeX source in `data-math`. Text formats are saved as tags inside the math element, and colors as inline styles, so they pass Lexxy's sanitizer:
+
+```html
+<span class="math-inline" data-math="E=mc^2" style="color: var(--highlight-3)"><strong><em>$E=mc^2$</em></strong></span>
+<div class="math-block" data-math="\int_0^1 x\,dx"><u>$$\int_0^1 x\,dx$$</u></div>
+```
+
+Render those elements outside the editor with `renderContentMath`:
 
 ```js
 import { renderContentMath } from "lexxy-math"
@@ -81,10 +88,10 @@ renderContentMath(document.querySelector(".post-body")) // one container
 
 ## Features
 
-- **Inline math:** type `$E=mc^2$` to convert it to rendered math
+- **Inline math:** type `$E=mc^2$` to convert it to rendered math. Prices like `$5 and $10`, escaped `\$`, inline code and code blocks stay text
 - **Block math:** type `$$` in an empty paragraph and press Enter
 - **Live editing:** click rendered math, then press Escape or Cmd/Ctrl+Enter to confirm
-- **Formatting:** bold, italic, underline, strikethrough, text color, and highlight styles apply to selected math nodes
+- **Formatting:** bold, italic, underline, strikethrough, text color, highlight, links, and clear formatting apply to selected math, in the editor and in rendered content
 - **Static rendering:** render saved math inside any content container
 - **Zero-config npm usage:** no source aliases or duplicate Lexical dependencies
 - **Importmap build:** KaTeX is bundled; only the Lexxy gem's `"lexxy"` module remains external
@@ -113,6 +120,17 @@ renderContentMath(document.querySelector(".post-body")) // one container
 | `lexxy-math/standalone` | import maps; KaTeX bundled, `"lexxy"` external |
 | `lexxy-math/styles/math-editor.css` | Optional editor stylesheet |
 | `lexxy-math/styles/math-content.css` | Optional saved-content stylesheet |
+
+## Development
+
+```bash
+npm run build       # dist/ builds and dist/styles/*.css
+npm test            # unit and build tests
+npm run test:e2e    # browser tests against the demo (npx playwright install chromium first)
+npm run build:demo  # docs/demo.js for the GitHub Pages demo
+```
+
+Releases are published to npm by CI when a `v*` tag is pushed.
 
 ## License
 

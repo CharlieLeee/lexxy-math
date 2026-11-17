@@ -7,9 +7,6 @@
   <link rel="icon" href="data:,">
   <meta name="description" content="KaTeX-based math for Lexxy, the rich text editor for Rails.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@37signals/lexxy@0.9.29/dist/stylesheets/lexxy.css">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/katex.min.css">
-  <link rel="stylesheet" href="styles/math-editor.css">
-  <link rel="stylesheet" href="styles/math-content.css">
   <style>
     /* Mirrors the Lexxy sandbox (basecamp/lexxy test/dummy) so the editor looks as it does upstream. */
     :root {
@@ -173,6 +170,7 @@
       <div class="samples">
         <button type="button" data-sample="default" aria-pressed="true">Default</button>
         <button type="button" data-sample="formulas" aria-pressed="false">Formulas</button>
+        <button type="button" data-sample="formatting" aria-pressed="false">Formatting</button>
         <button type="button" data-sample="empty" aria-pressed="false">Empty</button>
       </div>
 
@@ -182,7 +180,7 @@
         <li>Type <code>$E=mc^2$</code> for inline math.</li>
         <li>Type <code>$$</code> on an empty line and press Enter for block math.</li>
         <li>Click any math to edit it with a live preview; press Escape or <code>⌘/Ctrl+Enter</code> to confirm.</li>
-        <li>Bold, italic, strikethrough and highlight apply to selected math.</li>
+        <li>Bold, italic, underline, strikethrough, colors and links apply to selected math.</li>
       </ul>
     </section>
 
@@ -223,6 +221,19 @@
     <div class="math-block" data-math="\begin{aligned} \nabla \cdot \mathbf{E} &amp;= \frac{\rho}{\varepsilon_0} &amp; \nabla \cdot \mathbf{B} &amp;= 0 \\ \nabla \times \mathbf{E} &amp;= -\frac{\partial \mathbf{B}}{\partial t} &amp; \nabla \times \mathbf{B} &amp;= \mu_0 \mathbf{J} + \mu_0 \varepsilon_0 \frac{\partial \mathbf{E}}{\partial t} \end{aligned}"></div>
     <p>A matrix:</p>
     <div class="math-block" data-math="A = \begin{pmatrix} a_{11} &amp; a_{12} \\ a_{21} &amp; a_{22} \end{pmatrix}"></div>
+  </template>
+
+  <template id="sample-formatting">
+    <h3>Formatting</h3>
+    <p>Math follows the toolbar like text does:</p>
+    <ul>
+      <li>Bold <span class="math-inline" data-math="F = ma"><strong>$F = ma$</strong></span> and italic <span class="math-inline" data-math="\sin 2\theta"><em>$\sin 2\theta$</em></span></li>
+      <li>Underline <span class="math-inline" data-math="a + b"><u>$a + b$</u></span> and strikethrough <span class="math-inline" data-math="1 + 1 = 3"><s>$1 + 1 = 3$</s></span></li>
+      <li>Text color <span class="math-inline" data-math="\nabla f" style="color: var(--highlight-3);">$\nabla f$</span> and highlight <span class="math-inline" data-math="\Delta x" style="background-color: var(--highlight-bg-1);">$\Delta x$</span></li>
+      <li>Linked <a href="https://en.wikipedia.org/wiki/Pythagorean_theorem"><span class="math-inline" data-math="a^2 + b^2 = c^2">$a^2 + b^2 = c^2$</span></a></li>
+    </ul>
+    <div class="math-block" data-math="e^{i\pi} + 1 = 0" style="color: var(--highlight-6);"><strong>$$e^{i\pi} + 1 = 0$$</strong></div>
+    <p>Prices like $5 and $10 stay plain text.</p>
   </template>
 
   <template id="sample-empty"><p><br></p></template>

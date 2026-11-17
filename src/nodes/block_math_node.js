@@ -1,6 +1,7 @@
 import { DecoratorNode } from "../lexxy.js"
 import { createElement } from "../helpers/dom.js"
 import { renderMath } from "../helpers/math_helper.js"
+import { renderFormatted, styleFromDOM } from "../helpers/math_format.js"
 
 export class BlockMathNode extends DecoratorNode {
   $config() {
@@ -17,7 +18,7 @@ export class BlockMathNode extends DecoratorNode {
             conversion: (div) => ({
               node: new BlockMathNode({
                 latex: div.getAttribute("data-math"),
-                style: div.getAttribute("style") || ""
+                style: styleFromDOM(div)
               })
             }),
             priority: 2
@@ -41,52 +42,22 @@ export class BlockMathNode extends DecoratorNode {
 
   createDOM() {
     const figure = createElement("figure", { className: "lexxy-math-block" })
-    if (this.__style) {
-      figure.style.cssText = this.__style
-    }
-
     const preview = createElement("div", { className: "lexxy-math-block__preview" })
+
     if (this.__latex) {
-      preview.innerHTML = renderMath(this.__latex, { displayMode: true })
+      renderFormatted(preview, this.__style, { html: renderMath(this.__latex, { displayMode: true }) })
     } else {
       preview.textContent = "Click to add math formula"
       preview.classList.add("lexxy-math-block__preview--empty")
     }
-    figure.appendChild(preview)
 
-    const deleteButton = createElement("lexxy-node-delete-button")
-    figure.appendChild(deleteButton)
-
+    figure.append(preview, createElement("lexxy-node-delete-button"))
     return figure
   }
 
-  updateDOM(prevNode, dom) {
-    const styleChanged = this.__style !== prevNode.__style
-    const latexChanged = this.__latex !== prevNode.__latex
-    if (!styleChanged && !latexChanged) return false
-
-    if (styleChanged) {
-      if (this.__style) {
-        dom.style.cssText = this.__style
-      } else {
-        dom.removeAttribute("style")
-      }
-    }
-
-    if (!latexChanged) return false
-
-    const preview = dom.querySelector(".lexxy-math-block__preview")
-    if (!preview) return true
-
-    if (this.__latex) {
-      preview.classList.remove("lexxy-math-block__preview--empty")
-      preview.innerHTML = renderMath(this.__latex, { displayMode: true })
-    } else {
-      preview.textContent = "Click to add math formula"
-      preview.classList.add("lexxy-math-block__preview--empty")
-    }
-
-    return false
+  // Returning true makes Lexical recreate the DOM through createDOM
+  updateDOM(prevNode) {
+    return this.__style !== prevNode.__style || this.__latex !== prevNode.__latex
   }
 
   getTextContent() {
@@ -102,11 +73,7 @@ export class BlockMathNode extends DecoratorNode {
       className: "math-block",
       "data-math": this.__latex
     })
-    if (this.__style) {
-      div.setAttribute("style", this.__style)
-    }
-    div.textContent = `$$${this.__latex}$$`
-    return { element: div }
+    return { element: renderFormatted(div, this.__style, { text: `$$${this.__latex}$$` }) }
   }
 
   exportJSON() {

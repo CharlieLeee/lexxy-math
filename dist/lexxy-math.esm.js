@@ -11,6 +11,7 @@ const {
   $getSelection,
   $isParagraphNode,
   $isRangeSelection,
+  $isTextNode,
   CLICK_COMMAND,
   COMMAND_PRIORITY_HIGH,
   COMMAND_PRIORITY_NORMAL,
@@ -43,11 +44,66 @@ function createElement(name, properties, content = "") {
   return element
 }
 
-let injected = false;
+// Single source for the package styles: injected at runtime and written to
+// dist/styles/*.css by the build (see rollup/styles.mjs).
 
 const KATEX_CSS_URL = "https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/katex.min.css";
 
-const MATH_CSS = `
+const CONTENT_CSS = `
+/* Math in rendered content */
+.math-inline {
+  display: inline;
+}
+
+.math-block {
+  display: flex;
+  justify-content: center;
+  margin: 1em 0;
+  overflow-x: auto;
+}
+
+/* KaTeX resets fonts on .katex; let <strong> and <em> around the formula reach it */
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) :is(.katex-display, .katex, .katex-html, .katex-base) {
+  font-weight: inherit;
+  font-style: inherit;
+}
+
+/* KaTeX lays glyphs out in inline blocks, which text-decoration skips, so underline,
+   strikethrough and link underlines are drawn once across the whole formula */
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) :is(u, s) {
+  text-decoration: none;
+}
+
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) :is(u, s) .katex,
+a > :is(.math-inline, .lexxy-math-inline) .katex {
+  position: relative;
+}
+
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) :is(u, s) .katex-display > .katex {
+  display: inline-block;
+}
+
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) u .katex::after,
+a > :is(.math-inline, .lexxy-math-inline) .katex::after,
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) s .katex::before {
+  border-block-start: 0.06em solid currentColor;
+  content: "";
+  inset-inline: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) u .katex::after,
+a > :is(.math-inline, .lexxy-math-inline) .katex::after {
+  bottom: 0;
+}
+
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) s .katex::before {
+  top: 50%;
+}
+`;
+
+const EDITOR_CSS = `
 /* Inline math */
 .lexxy-math-inline {
   cursor: pointer;
@@ -71,18 +127,6 @@ const MATH_CSS = `
 .lexxy-math-block:hover {
   background: var(--lexxy-color-ink-lightest);
   border-radius: var(--lexxy-radius);
-}
-
-/* KaTeX style inheritance */
-.lexxy-math-inline .katex,
-.lexxy-math-inline .katex-html,
-.lexxy-math-inline .katex .katex-base,
-.lexxy-math-block__preview .katex,
-.lexxy-math-block__preview .katex-html,
-.lexxy-math-block__preview .katex .katex-base {
-  font-weight: inherit;
-  font-style: inherit;
-  text-decoration: inherit;
 }
 
 .lexxy-math-block__preview--empty {
@@ -143,19 +187,19 @@ const MATH_CSS = `
 }
 `;
 
+let injected = false;
+
 function injectStyles() {
   if (injected || typeof document === "undefined") return
   injected = true;
 
-  // KaTeX CSS from CDN
   const link = document.createElement("link");
   link.rel = "stylesheet";
   link.href = KATEX_CSS_URL;
   document.head.appendChild(link);
 
-  // Math editor CSS
   const style = document.createElement("style");
-  style.textContent = MATH_CSS;
+  style.textContent = CONTENT_CSS + EDITOR_CSS;
   document.head.appendChild(style);
 }
 
@@ -174,6 +218,145 @@ function escapeHtml(text) {
   return String(text).replace(/[&<>"']/g, (ch) => map[ch])
 }
 
+// Text formats on math nodes are stored in the node's style, but Lexxy's sanitizer
+// only keeps color and background-color, so the editor and the saved HTML render
+// them as semantic tags (<strong>, <em>, <s>, <u>) inside the math element.
+
+const FORMATS = [
+  { name: "bold", tag: "strong", tags: ["STRONG", "B"], has: (s) => isBoldWeight(s["font-weight"]), set: (s) => { s["font-weight"] = "bold"; }, clear: (s) => { delete s["font-weight"]; } },
+  { name: "italic", tag: "em", tags: ["EM", "I"], has: (s) => s["font-style"] === "italic", set: (s) => { s["font-style"] = "italic"; }, clear: (s) => { delete s["font-style"]; } },
+  { name: "strikethrough", tag: "s", tags: ["S", "DEL", "STRIKE"], has: (s) => hasDecoration(s, "line-through"), set: (s) => addDecoration(s, "line-through"), clear: (s) => removeDecoration(s, "line-through") },
+  { name: "underline", tag: "u", tags: ["U", "INS"], has: (s) => hasDecoration(s, "underline"), set: (s) => addDecoration(s, "underline"), clear: (s) => removeDecoration(s, "underline") }
+];
+
+const FORMAT_TAG_NAMES = new Set(FORMATS.flatMap((format) => format.tags));
+const INLINE_ANCESTOR_TAG_NAMES = new Set([...FORMAT_TAG_NAMES, "A", "SPAN", "MARK"]);
+
+function parseStyle(cssText) {
+  const styles = {};
+  if (!cssText) return styles
+
+  for (const declaration of cssText.split(";")) {
+    const colon = declaration.indexOf(":");
+    if (colon === -1) continue
+
+    const property = declaration.slice(0, colon).trim();
+    const value = declaration.slice(colon + 1).trim();
+    if (property && value) styles[property] = value;
+  }
+
+  return styles
+}
+
+function serializeStyle(styles) {
+  return Object.entries(styles)
+    .filter(([, value]) => value != null && value !== "")
+    .map(([property, value]) => `${property}: ${value}`)
+    .join("; ")
+}
+
+function isMathFormat(name) {
+  return FORMATS.some((format) => format.name === name)
+}
+
+function hasMathFormat(style, name) {
+  return FORMATS.find((format) => format.name === name).has(parseStyle(style))
+}
+
+function setMathFormat(style, name, enabled) {
+  const styles = parseStyle(style);
+  const format = FORMATS.find((format) => format.name === name);
+  enabled ? format.set(styles) : format.clear(styles);
+  return serializeStyle(styles)
+}
+
+function isBoldWeight(value) {
+  if (!value) return false
+
+  const normalized = String(value).trim().toLowerCase();
+  if (normalized === "bold" || normalized === "bolder") return true
+
+  const numeric = Number.parseInt(normalized, 10);
+  return !Number.isNaN(numeric) && numeric >= 600
+}
+
+function toggleTextDecorationToken(currentValue, token) {
+  const tokens = decorationTokens(currentValue);
+  tokens.has(token) ? tokens.delete(token) : tokens.add(token);
+  return Array.from(tokens).join(" ")
+}
+
+// Renders `element > strong > em > s > u > content` and keeps the other styles on element.
+// The editor DOM and the saved HTML both use it, so they share one structure.
+function renderFormatted(element, style, { html, text }) {
+  const styles = parseStyle(style);
+  let target = element;
+
+  for (const format of FORMATS) {
+    if (!format.has(styles)) continue
+
+    format.clear(styles);
+    target = target.appendChild(document.createElement(format.tag));
+  }
+
+  if (html === undefined) {
+    target.textContent = text;
+  } else {
+    target.innerHTML = html;
+  }
+
+  const remaining = serializeStyle(styles);
+  if (remaining) element.setAttribute("style", remaining);
+
+  return element
+}
+
+// Import: merges the element's own style with format tags inside it and inline ancestors around it.
+function styleFromDOM(element) {
+  const styles = parseStyle(element.getAttribute("style"));
+  const tagNames = new Set();
+
+  element.querySelectorAll("*").forEach((child) => tagNames.add(child.tagName));
+  for (let ancestor = element.parentElement; ancestor && INLINE_ANCESTOR_TAG_NAMES.has(ancestor.tagName); ancestor = ancestor.parentElement) {
+    if (ancestor.tagName === "B" && ancestor.style.fontWeight === "normal") continue
+    tagNames.add(ancestor.tagName);
+  }
+
+  for (const format of FORMATS) {
+    if (format.tags.some((tagName) => tagNames.has(tagName))) format.set(styles);
+  }
+
+  return serializeStyle(styles)
+}
+
+// Content rendering: descend through the format tags written by renderFormatted.
+function formattedContentTarget(element) {
+  let target = element;
+  while (target.children?.length === 1 && FORMAT_TAG_NAMES.has(target.firstElementChild.tagName)) {
+    target = target.firstElementChild;
+  }
+  return target
+}
+
+function decorationTokens(value) {
+  return new Set(String(value || "").split(/\s+/).filter(Boolean))
+}
+
+function hasDecoration(styles, token) {
+  return decorationTokens(styles["text-decoration"]).has(token)
+}
+
+function addDecoration(styles, token) {
+  if (!hasDecoration(styles, token)) styles["text-decoration"] = toggleTextDecorationToken(styles["text-decoration"], token);
+}
+
+function removeDecoration(styles, token) {
+  if (!hasDecoration(styles, token)) return
+
+  const next = toggleTextDecorationToken(styles["text-decoration"], token);
+  next ? styles["text-decoration"] = next : delete styles["text-decoration"];
+}
+
 class InlineMathNode extends DecoratorNode {
   $config() {
     return this.config("inline_math", {
@@ -189,7 +372,7 @@ class InlineMathNode extends DecoratorNode {
             conversion: (span) => ({
               node: new InlineMathNode({
                 latex: span.getAttribute("data-math"),
-                style: span.getAttribute("style") || ""
+                style: styleFromDOM(span)
               })
             }),
             priority: 2
@@ -217,41 +400,13 @@ class InlineMathNode extends DecoratorNode {
       "data-lexxy-decorator": true
     });
 
-    if (this.__style) {
-      span.style.cssText = this.__style;
-    }
-
-    if (this.__latex) {
-      span.innerHTML = renderMath(this.__latex);
-    } else {
-      span.textContent = "$\\ldots$";
-    }
-
-    return span
+    const content = this.__latex ? { html: renderMath(this.__latex) } : { text: "$\\ldots$" };
+    return renderFormatted(span, this.__style, content)
   }
 
-  updateDOM(prevNode, dom) {
-    const styleChanged = this.__style !== prevNode.__style;
-    const latexChanged = this.__latex !== prevNode.__latex;
-    if (!styleChanged && !latexChanged) return false
-
-    if (styleChanged) {
-      if (this.__style) {
-        dom.style.cssText = this.__style;
-      } else {
-        dom.removeAttribute("style");
-      }
-    }
-
-    if (latexChanged) {
-      if (this.__latex) {
-        dom.innerHTML = renderMath(this.__latex);
-      } else {
-        dom.textContent = "$\\ldots$";
-      }
-    }
-
-    return false
+  // Returning true makes Lexical recreate the DOM through createDOM
+  updateDOM(prevNode) {
+    return this.__style !== prevNode.__style || this.__latex !== prevNode.__latex
   }
 
   getTextContent() {
@@ -267,11 +422,7 @@ class InlineMathNode extends DecoratorNode {
       className: "math-inline",
       "data-math": this.__latex
     });
-    if (this.__style) {
-      span.setAttribute("style", this.__style);
-    }
-    span.textContent = `$${this.__latex}$`;
-    return { element: span }
+    return { element: renderFormatted(span, this.__style, { text: `$${this.__latex}$` }) }
   }
 
   exportJSON() {
@@ -325,7 +476,7 @@ class BlockMathNode extends DecoratorNode {
             conversion: (div) => ({
               node: new BlockMathNode({
                 latex: div.getAttribute("data-math"),
-                style: div.getAttribute("style") || ""
+                style: styleFromDOM(div)
               })
             }),
             priority: 2
@@ -349,52 +500,22 @@ class BlockMathNode extends DecoratorNode {
 
   createDOM() {
     const figure = createElement("figure", { className: "lexxy-math-block" });
-    if (this.__style) {
-      figure.style.cssText = this.__style;
-    }
-
     const preview = createElement("div", { className: "lexxy-math-block__preview" });
+
     if (this.__latex) {
-      preview.innerHTML = renderMath(this.__latex, { displayMode: true });
+      renderFormatted(preview, this.__style, { html: renderMath(this.__latex, { displayMode: true }) });
     } else {
       preview.textContent = "Click to add math formula";
       preview.classList.add("lexxy-math-block__preview--empty");
     }
-    figure.appendChild(preview);
 
-    const deleteButton = createElement("lexxy-node-delete-button");
-    figure.appendChild(deleteButton);
-
+    figure.append(preview, createElement("lexxy-node-delete-button"));
     return figure
   }
 
-  updateDOM(prevNode, dom) {
-    const styleChanged = this.__style !== prevNode.__style;
-    const latexChanged = this.__latex !== prevNode.__latex;
-    if (!styleChanged && !latexChanged) return false
-
-    if (styleChanged) {
-      if (this.__style) {
-        dom.style.cssText = this.__style;
-      } else {
-        dom.removeAttribute("style");
-      }
-    }
-
-    if (!latexChanged) return false
-
-    const preview = dom.querySelector(".lexxy-math-block__preview");
-    if (!preview) return true
-
-    if (this.__latex) {
-      preview.classList.remove("lexxy-math-block__preview--empty");
-      preview.innerHTML = renderMath(this.__latex, { displayMode: true });
-    } else {
-      preview.textContent = "Click to add math formula";
-      preview.classList.add("lexxy-math-block__preview--empty");
-    }
-
-    return false
+  // Returning true makes Lexical recreate the DOM through createDOM
+  updateDOM(prevNode) {
+    return this.__style !== prevNode.__style || this.__latex !== prevNode.__latex
   }
 
   getTextContent() {
@@ -410,11 +531,7 @@ class BlockMathNode extends DecoratorNode {
       className: "math-block",
       "data-math": this.__latex
     });
-    if (this.__style) {
-      div.setAttribute("style", this.__style);
-    }
-    div.textContent = `$$${this.__latex}$$`;
-    return { element: div }
+    return { element: renderFormatted(div, this.__style, { text: `$$${this.__latex}$$` }) }
   }
 
   exportJSON() {
@@ -453,11 +570,29 @@ function $isBlockMathNode(node) {
   return node instanceof BlockMathNode
 }
 
+// Pandoc rules: no space just inside the dollars, no escaped dollar, and no digit right
+// after the closing one, so prices like "$5 and $10" stay text.
+const INLINE_MATH_REGEX = /(?:^|[^$\\])\$([^\s$](?:[^$\n]*[^\s$\\])?)\$(?![$\d])/;
+
+// Returns the first inline formula in text as { latex, start, end }, or null.
+function findInlineMath(text) {
+  const match = INLINE_MATH_REGEX.exec(text);
+  if (!match) return null
+
+  const start = match[0].startsWith("$") ? match.index : match.index + 1;
+  if (isInsideOpenBacktick(text, start)) return null
+
+  return { latex: match[1], start, end: match.index + match[0].length }
+}
+
+// Typing `$x$` should become inline code, not math inside backticks.
+function isInsideOpenBacktick(text, index) {
+  return (text.slice(0, index).match(/`/g) || []).length % 2 === 1
+}
+
 const INSERT_BLOCK_MATH_COMMAND = createCommand();
 const INSERT_INLINE_MATH_COMMAND = createCommand();
 const APPLY_MATH_STYLE_COMMAND = createCommand();
-
-const INLINE_MATH_REGEX = /(?:^|[^$])\$([^$\n]+)\$(?!\$)/;
 
 const MATH_STYLE_PROPERTIES = new Set([
   "color",
@@ -505,6 +640,11 @@ class MathExtension extends Extension {
             return $handleMathStyleCommand(styles, { toggle: true })
           }, COMMAND_PRIORITY_HIGH),
 
+          editor.registerCommand("clearFormatting", () => {
+            $getSelectedMathNodes().forEach((node) => node.setStyle(""));
+            return false
+          }, COMMAND_PRIORITY_HIGH),
+
           editor.registerCommand("removeHighlight", () => {
             return $handleMathStyleCommand({
               "color": null,
@@ -526,33 +666,13 @@ class MathExtension extends Extension {
 }
 
 function $detectInlineMath(textNode) {
-  const text = textNode.getTextContent();
-  const match = INLINE_MATH_REGEX.exec(text);
+  if (textNode.hasFormat("code")) return
 
+  const match = findInlineMath(textNode.getTextContent());
   if (!match) return
 
-  const latex = match[1];
-  const matchStart = match[0].startsWith("$") ? match.index : match.index + 1;
-  const matchEnd = match.index + match[0].length;
-
-  let nodeToSplit = textNode;
-  let currentOffset = 0;
-
-  if (matchStart > 0) {
-    const [before] = nodeToSplit.splitText(matchStart);
-    nodeToSplit = before.getNextSibling();
-    currentOffset = matchStart;
-  }
-
-  const mathNode = new InlineMathNode({ latex });
-
-  if (matchEnd < text.length) {
-    const splitOffset = matchEnd - currentOffset;
-    const [mathText] = nodeToSplit.splitText(splitOffset);
-    mathText.replace(mathNode);
-  } else {
-    nodeToSplit.replace(mathNode);
-  }
+  const parts = textNode.splitText(match.start, match.end);
+  parts[match.start > 0 ? 1 : 0].replace(new InlineMathNode({ latex: match.latex }));
 }
 
 function $handleBlockMathTrigger(editor, editorElement, event) {
@@ -596,27 +716,15 @@ function $handleMathClick(editor, editorElement, target) {
   const targetNode = $getNearestNodeFromDOMNode(target);
   if (!targetNode) return false
 
-  if ($isBlockMathNode(targetNode)) {
-    const nodeKey = targetNode.getKey();
-    const latex = targetNode.getLatex();
-    requestAnimationFrame(() => {
-      const targetElement = editor.getElementByKey(nodeKey);
-      openMathEditor(editor, editorElement, nodeKey, latex, true, targetElement);
-    });
-    return true
-  }
+  const displayMode = $isBlockMathNode(targetNode);
+  if (!displayMode && !$isInlineMathNode(targetNode)) return false
 
-  if ($isInlineMathNode(targetNode)) {
-    const nodeKey = targetNode.getKey();
-    const latex = targetNode.getLatex();
-    requestAnimationFrame(() => {
-      const targetElement = editor.getElementByKey(nodeKey);
-      openMathEditor(editor, editorElement, nodeKey, latex, false, targetElement);
-    });
-    return true
-  }
-
-  return false
+  const nodeKey = targetNode.getKey();
+  const latex = targetNode.getLatex();
+  requestAnimationFrame(() => {
+    openMathEditor(editor, editorElement, nodeKey, latex, displayMode, editor.getElementByKey(nodeKey));
+  });
+  return true
 }
 
 function $insertBlockMath(editor, editorElement) {
@@ -653,47 +761,19 @@ function $insertInlineMath(editor) {
   return true
 }
 
+// Mirrors Lexical's toggle: the first selected text node decides whether the format turns on or off.
 function $handleMathFormatCommand(formatType) {
+  if (!isMathFormat(formatType)) return false
+
   const mathNodes = $getSelectedMathNodes();
   if (!mathNodes.length) return false
 
-  if (formatType === "bold") {
-    for (const node of mathNodes) {
-      const styles = $parseStyle(node.getStyle());
-      if ($isBoldWeight(styles["font-weight"])) {
-        delete styles["font-weight"];
-      } else {
-        styles["font-weight"] = "bold";
-      }
-      node.setStyle($serializeStyle(styles));
-    }
-  } else if (formatType === "italic") {
-    for (const node of mathNodes) {
-      const styles = $parseStyle(node.getStyle());
-      if ((styles["font-style"] || "").trim() === "italic") {
-        delete styles["font-style"];
-      } else {
-        styles["font-style"] = "italic";
-      }
-      node.setStyle($serializeStyle(styles));
-    }
-  } else if (formatType === "underline" || formatType === "strikethrough") {
-    const decoration = formatType === "underline" ? "underline" : "line-through";
+  const firstTextNode = $getSelection().getNodes().find($isTextNode);
+  const enabled = firstTextNode
+    ? !firstTextNode.hasFormat(formatType)
+    : !mathNodes.every((node) => hasMathFormat(node.getStyle(), formatType));
 
-    for (const node of mathNodes) {
-      const styles = $parseStyle(node.getStyle());
-      const nextTextDecoration = $toggleTextDecorationToken(styles["text-decoration"], decoration);
-
-      if (nextTextDecoration) {
-        styles["text-decoration"] = nextTextDecoration;
-      } else {
-        delete styles["text-decoration"];
-      }
-
-      node.setStyle($serializeStyle(styles));
-    }
-  }
-
+  mathNodes.forEach((node) => node.setStyle(setMathFormat(node.getStyle(), formatType, enabled)));
   return false
 }
 
@@ -712,7 +792,7 @@ function $handleMathStyleCommand(patch, { toggle = false } = {}) {
   if (!mathNodes.length) return false
 
   for (const node of mathNodes) {
-    const styles = $parseStyle(node.getStyle());
+    const styles = parseStyle(node.getStyle());
 
     for (const [property, value] of Object.entries(normalizedPatch)) {
       const previousValue = styles[property] || null;
@@ -725,7 +805,7 @@ function $handleMathStyleCommand(patch, { toggle = false } = {}) {
       }
     }
 
-    node.setStyle($serializeStyle(styles));
+    node.setStyle(serializeStyle(styles));
   }
 
   return false
@@ -754,52 +834,6 @@ function $normalizeMathStylePatch(patch) {
   }
 
   return Object.keys(normalizedPatch).length ? normalizedPatch : null
-}
-
-// Lightweight style parsing — avoids dependency on @lexical/selection
-function $parseStyle(cssText) {
-  const styles = {};
-  if (!cssText) return styles
-
-  for (const declaration of cssText.split(";")) {
-    const colon = declaration.indexOf(":");
-    if (colon === -1) continue
-
-    const property = declaration.slice(0, colon).trim();
-    const value = declaration.slice(colon + 1).trim();
-    if (property && value) styles[property] = value;
-  }
-
-  return styles
-}
-
-function $serializeStyle(styles) {
-  return Object.entries(styles)
-    .filter(([, value]) => value != null && value !== "")
-    .map(([property, value]) => `${property}: ${value}`)
-    .join("; ")
-}
-
-function $toggleTextDecorationToken(currentValue, token) {
-  const tokens = new Set(String(currentValue || "").split(/\s+/).filter(Boolean));
-
-  if (tokens.has(token)) {
-    tokens.delete(token);
-  } else {
-    tokens.add(token);
-  }
-
-  return Array.from(tokens).join(" ")
-}
-
-function $isBoldWeight(value) {
-  if (!value) return false
-
-  const normalized = String(value).trim().toLowerCase();
-  if (normalized === "bold" || normalized === "bolder") return true
-
-  const numeric = Number.parseInt(normalized, 10);
-  return !Number.isNaN(numeric) && numeric >= 600
 }
 
 function openMathEditor(editor, editorElement, nodeKey, latex, displayMode, targetElement) {
@@ -841,7 +875,7 @@ function renderContentMath(container = document) {
     if (!latex) return
 
     const displayMode = element.classList.contains("math-block");
-    element.innerHTML = renderMath(latex, { displayMode });
+    formattedContentTarget(element).innerHTML = renderMath(latex, { displayMode });
   });
 }
 

@@ -1,5 +1,5 @@
 import resolve from "@rollup/plugin-node-resolve"
-import { cp, mkdir } from "node:fs/promises"
+import { writeStyles } from "./rollup/styles.mjs"
 
 export default {
   input: "src/index.js",
@@ -14,16 +14,6 @@ export default {
   ],
   plugins: [
     resolve(),
-    copyStyles("styles", "dist/styles")
+    writeStyles("dist/styles")
   ]
-}
-
-function copyStyles(source, destination) {
-  return {
-    name: "copy-styles",
-    async writeBundle() {
-      await mkdir(destination, { recursive: true })
-      await cp(source, destination, { recursive: true })
-    }
-  }
 }

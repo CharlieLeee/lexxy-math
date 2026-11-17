@@ -1,8 +1,63 @@
-let injected = false
+// Single source for the package styles: injected at runtime and written to
+// dist/styles/*.css by the build (see rollup/styles.mjs).
 
-const KATEX_CSS_URL = "https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/katex.min.css"
+export const KATEX_CSS_URL = "https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/katex.min.css"
 
-const MATH_CSS = `
+export const CONTENT_CSS = `
+/* Math in rendered content */
+.math-inline {
+  display: inline;
+}
+
+.math-block {
+  display: flex;
+  justify-content: center;
+  margin: 1em 0;
+  overflow-x: auto;
+}
+
+/* KaTeX resets fonts on .katex; let <strong> and <em> around the formula reach it */
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) :is(.katex-display, .katex, .katex-html, .katex-base) {
+  font-weight: inherit;
+  font-style: inherit;
+}
+
+/* KaTeX lays glyphs out in inline blocks, which text-decoration skips, so underline,
+   strikethrough and link underlines are drawn once across the whole formula */
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) :is(u, s) {
+  text-decoration: none;
+}
+
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) :is(u, s) .katex,
+a > :is(.math-inline, .lexxy-math-inline) .katex {
+  position: relative;
+}
+
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) :is(u, s) .katex-display > .katex {
+  display: inline-block;
+}
+
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) u .katex::after,
+a > :is(.math-inline, .lexxy-math-inline) .katex::after,
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) s .katex::before {
+  border-block-start: 0.06em solid currentColor;
+  content: "";
+  inset-inline: 0;
+  pointer-events: none;
+  position: absolute;
+}
+
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) u .katex::after,
+a > :is(.math-inline, .lexxy-math-inline) .katex::after {
+  bottom: 0;
+}
+
+:is(.math-inline, .math-block, .lexxy-math-inline, .lexxy-math-block__preview) s .katex::before {
+  top: 50%;
+}
+`
+
+export const EDITOR_CSS = `
 /* Inline math */
 .lexxy-math-inline {
   cursor: pointer;
@@ -26,18 +81,6 @@ const MATH_CSS = `
 .lexxy-math-block:hover {
   background: var(--lexxy-color-ink-lightest);
   border-radius: var(--lexxy-radius);
-}
-
-/* KaTeX style inheritance */
-.lexxy-math-inline .katex,
-.lexxy-math-inline .katex-html,
-.lexxy-math-inline .katex .katex-base,
-.lexxy-math-block__preview .katex,
-.lexxy-math-block__preview .katex-html,
-.lexxy-math-block__preview .katex .katex-base {
-  font-weight: inherit;
-  font-style: inherit;
-  text-decoration: inherit;
 }
 
 .lexxy-math-block__preview--empty {
@@ -98,18 +141,18 @@ const MATH_CSS = `
 }
 `
 
+let injected = false
+
 export function injectStyles() {
   if (injected || typeof document === "undefined") return
   injected = true
 
-  // KaTeX CSS from CDN
   const link = document.createElement("link")
   link.rel = "stylesheet"
   link.href = KATEX_CSS_URL
   document.head.appendChild(link)
 
-  // Math editor CSS
   const style = document.createElement("style")
-  style.textContent = MATH_CSS
+  style.textContent = CONTENT_CSS + EDITOR_CSS
   document.head.appendChild(style)
 }
