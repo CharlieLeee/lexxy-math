@@ -2,6 +2,8 @@
 
 KaTeX-based math rendering for [Lexxy](https://github.com/basecamp/lexxy), with inline (`$...$`) and block (`$$...$$`) math, live preview editing, and support for both npm bundlers and Rails import maps.
 
+**[Live demo](https://charlieleee.github.io/lexxy-math/)**
+
 ## Requirements
 
 - Lexxy 0.9.29 or newer

@@ -3,112 +3,229 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>lexxy-math Demo</title>
+  <title>lexxy-math</title>
+  <link rel="icon" href="data:,">
+  <meta name="description" content="KaTeX-based math for Lexxy, the rich text editor for Rails.">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@37signals/lexxy@0.9.29/dist/stylesheets/lexxy.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.18.4/dist/katex.min.css">
   <link rel="stylesheet" href="styles/math-editor.css">
   <link rel="stylesheet" href="styles/math-content.css">
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
+    /* Mirrors the Lexxy sandbox (basecamp/lexxy test/dummy) so the editor looks as it does upstream. */
+    :root {
+      --sandbox-background-color: oklch(98% 0 0);
+      --sandbox-text-color: oklch(20% 0 0);
+
+      @media (prefers-color-scheme: dark) {
+        --sandbox-background-color: oklch(15% 0 0);
+        --sandbox-text-color: oklch(96% 0 0);
+
+        --lexxy-color-ink: oklch(96% 0 0);
+        --lexxy-color-ink-medium: oklch(75% 0 0);
+        --lexxy-color-ink-light: oklch(55% 0 0);
+        --lexxy-color-ink-lighter: oklch(40% 0 0);
+        --lexxy-color-ink-lightest: oklch(25% 0 0);
+        --lexxy-color-ink-inverted: oklch(15% 0 0);
+        --lexxy-color-accent-dark: oklch(70% 0.30 260);
+        --lexxy-color-accent-medium: oklch(75% 0.196 258);
+        --lexxy-color-accent-light: oklch(45% 0.04 254);
+        --lexxy-color-accent-lightest: oklch(35% 0.04 254);
+        --lexxy-color-red: oklch(70% 0.15 27);
+        --lexxy-color-green: oklch(70% 0.15 145);
+        --lexxy-color-blue: oklch(75% 0.196 258);
+        --lexxy-color-purple: oklch(70% 0.15 305);
+        --lexxy-shadow: 0 0 0 1px rgba(100, 100, 100, 0.3);
+      }
+    }
+
+    html { font-size: 16px; }
 
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      max-width: 720px;
-      margin: 0 auto;
-      padding: 2rem 1rem;
-      color: #1a1a1a;
-      background: #fafafa;
+      background-color: var(--sandbox-background-color);
+      color: var(--sandbox-text-color);
+      font-family: var(--lexxy-font-base);
+      margin: 0;
     }
 
-    h1 {
-      font-size: 1.75rem;
-      margin: 0 0 0.25rem;
+    a { color: inherit; }
+
+    header {
+      align-items: baseline;
+      border-block-end: 1px solid var(--lexxy-color-ink-lightest);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem;
+      padding: 1rem 2rem;
+
+      h1 { font-size: 1.25rem; font-weight: 900; margin: 0; }
+      p { color: var(--lexxy-color-ink-medium); margin: 0; }
+      nav { display: flex; gap: 1rem; margin-inline-start: auto; }
     }
 
-    h1 code {
-      font-weight: 600;
-      background: none;
-      padding: 0;
+    main {
+      display: grid;
+      min-height: calc(100dvh - 4rem);
+
+      @media (min-width: 800px) {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
 
-    .subtitle {
-      color: #666;
-      margin: 0 0 2rem;
+    .input,
+    .output {
+      min-inline-size: 0;
+      padding: 2rem;
     }
 
-    .subtitle a {
-      color: inherit;
+    .output {
+      background: rgba(100, 100, 100, 0.1);
+
+      details {
+        background: var(--lexxy-color-ink-lightest);
+        border-radius: 0.25rem;
+        margin-bottom: 0.5rem;
+        overflow: hidden;
+
+        &[open] { background: var(--lexxy-color-canvas); }
+      }
+
+      summary {
+        cursor: pointer;
+        font-weight: bold;
+        padding: 0.75rem 1rem;
+      }
+
+      details > :not(summary) {
+        border-block-start: 1px solid var(--lexxy-color-ink-lightest);
+        margin: 0;
+        padding: 1rem;
+      }
+
+      pre {
+        background: transparent;
+        font-family: var(--lexxy-font-mono);
+        font-size: 0.85rem;
+        overflow-x: auto;
+        white-space: pre-wrap;
+      }
     }
 
-    h2 {
-      font-size: 1.1rem;
-      margin: 2rem 0 0.75rem;
+    section > h2 {
+      font-size: 32px;
+      font-weight: 900;
+      line-height: 1;
+      margin-block: 0 1em;
     }
 
-    lexxy-editor {
-      font-size: 1rem;
-      min-height: 200px;
+    .samples {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-block-end: 1rem;
+
+      button {
+        background: var(--lexxy-color-canvas);
+        border: 1px solid var(--lexxy-color-ink-lighter);
+        border-radius: 99rem;
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+        font-size: 0.875rem;
+        padding: 0.25rem 0.75rem;
+
+        &[aria-pressed=true] {
+          background: var(--lexxy-color-ink);
+          border-color: var(--lexxy-color-ink);
+          color: var(--lexxy-color-ink-inverted);
+        }
+      }
     }
 
     .tips {
-      background: #fff;
-      border: 1px solid #e5e5e5;
-      border-radius: 8px;
-      padding: 1rem 1.25rem;
-      font-size: 0.9rem;
+      color: var(--lexxy-color-ink-medium);
+      font-size: 0.875rem;
       line-height: 1.6;
-    }
+      padding-inline-start: 1.25rem;
 
-    .tips code {
-      background: #f0f0f0;
-      border-radius: 3px;
-      padding: 0.15em 0.4em;
-      font-size: 0.85em;
+      code {
+        background: var(--lexxy-color-ink-lightest);
+        border-radius: 0.25rem;
+        font-family: var(--lexxy-font-mono);
+        padding: 0.1em 0.35em;
+      }
     }
-
-    .tips ul {
-      margin: 0;
-      padding-left: 1.25rem;
-    }
-
-    .tips li + li {
-      margin-top: 0.35rem;
-    }
-
-    footer {
-      margin-top: 3rem;
-      padding-top: 1rem;
-      border-top: 1px solid #e5e5e5;
-      font-size: 0.85rem;
-      color: #999;
-    }
-
-    footer a { color: #666; }
   </style>
 </head>
 <body>
   <header>
-    <h1><code>lexxy-math</code></h1>
-    <p class="subtitle">KaTeX-based math rendering for <a href="https://github.com/basecamp/lexxy">Lexxy</a></p>
+    <h1>lexxy-math</h1>
+    <p>KaTeX-based math for <a href="https://github.com/basecamp/lexxy">Lexxy</a></p>
+    <nav>
+      <a href="https://www.npmjs.com/package/lexxy-math">npm</a>
+      <a href="https://github.com/CharlieLeee/lexxy-math">GitHub</a>
+    </nav>
   </header>
 
   <main>
-    <h2>Try it</h2>
-    <lexxy-editor placeholder="Type $E=mc^2$ for inline math, or type $$ on a new line for block math..."></lexxy-editor>
+    <section class="input">
+      <h2>Editor</h2>
 
-    <h2>How to use</h2>
-    <div class="tips">
-      <ul>
-        <li><strong>Inline math</strong> &mdash; type <code>$E=mc^2$</code> and it auto-converts</li>
-        <li><strong>Block math</strong> &mdash; type <code>$$</code> on an empty line, then press Enter</li>
-        <li><strong>Edit</strong> &mdash; click any rendered math to open the editor with live preview</li>
-        <li><strong>Confirm</strong> &mdash; press Escape or Cmd+Enter to save</li>
+      <div class="samples">
+        <button type="button" data-sample="default" aria-pressed="true">Default</button>
+        <button type="button" data-sample="formulas" aria-pressed="false">Formulas</button>
+        <button type="button" data-sample="empty" aria-pressed="false">Empty</button>
+      </div>
+
+      <lexxy-editor class="lexxy-content" placeholder="Write something…" attachments="false"></lexxy-editor>
+
+      <ul class="tips">
+        <li>Type <code>$E=mc^2$</code> for inline math.</li>
+        <li>Type <code>$$</code> on an empty line and press Enter for block math.</li>
+        <li>Click any math to edit it with a live preview; press Escape or <code>⌘/Ctrl+Enter</code> to confirm.</li>
+        <li>Bold, italic, strikethrough and highlight apply to selected math.</li>
       </ul>
-    </div>
+    </section>
+
+    <section class="output">
+      <h2>Output</h2>
+      <details name="output" open>
+        <summary>Rendered</summary>
+        <div class="lexxy-content" data-output="rendered"></div>
+      </details>
+      <details name="output">
+        <summary>HTML</summary>
+        <pre data-output="html"></pre>
+      </details>
+      <details name="output">
+        <summary>Plain text</summary>
+        <pre data-output="text"></pre>
+      </details>
+    </section>
   </main>
 
-  <footer>
-    <a href="https://github.com/CharlieLeee/lexxy-math">GitHub</a>
-  </footer>
+  <template id="sample-default">
+    <h3>lexxy-math</h3>
+    <p>Math for <a href="https://github.com/basecamp/lexxy">Lexxy</a>, rendered with KaTeX. Inline formulas like <span class="math-inline" data-math="E = mc^2">$E = mc^2$</span> sit in the flow of text, and Euler's identity <span class="math-inline" data-math="e^{i\pi} + 1 = 0">$e^{i\pi} + 1 = 0$</span> renders right next to <b><strong>rich</strong></b> <i><em>text</em></i>.</p>
+    <p>Block math gets its own line:</p>
+    <div class="math-block" data-math="\int_{-\infty}^{\infty} e^{-x^2}\,dx = \sqrt{\pi}"></div>
+    <ul>
+      <li>Wrap LaTeX in single dollar signs for inline math.</li>
+      <li>Type <code>$$</code> and press Enter for a block.</li>
+      <li>Click any formula to edit it.</li>
+    </ul>
+  </template>
+
+  <template id="sample-formulas">
+    <h3>Formulas</h3>
+    <p>The quadratic formula <span class="math-inline" data-math="x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}">$x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$</span> solves <span class="math-inline" data-math="ax^2 + bx + c = 0">$ax^2 + bx + c = 0$</span>.</p>
+    <div class="math-block" data-math="\sum_{n=1}^{\infty} \frac{1}{n^2} = \frac{\pi^2}{6}"></div>
+    <p>Maxwell's equations in differential form:</p>
+    <div class="math-block" data-math="\begin{aligned} \nabla \cdot \mathbf{E} &amp;= \frac{\rho}{\varepsilon_0} &amp; \nabla \cdot \mathbf{B} &amp;= 0 \\ \nabla \times \mathbf{E} &amp;= -\frac{\partial \mathbf{B}}{\partial t} &amp; \nabla \times \mathbf{B} &amp;= \mu_0 \mathbf{J} + \mu_0 \varepsilon_0 \frac{\partial \mathbf{E}}{\partial t} \end{aligned}"></div>
+    <p>A matrix:</p>
+    <div class="math-block" data-math="A = \begin{pmatrix} a_{11} &amp; a_{12} \\ a_{21} &amp; a_{22} \end{pmatrix}"></div>
+  </template>
+
+  <template id="sample-empty"><p><br></p></template>
 
   <script type="module" src="demo.js"></script>
 </body>
